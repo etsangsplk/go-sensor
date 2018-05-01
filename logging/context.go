@@ -3,6 +3,8 @@ package logging
 import (
 	"context"
 	"net/http"
+
+	"gopkg.in/mgo.v2/bson"
 )
 
 type keyType int
@@ -34,7 +36,7 @@ func NewContext(ctx context.Context, logger *Logger) context.Context {
 // unique bson hex id will be generated.
 func NewRequestContext(ctx context.Context, requestId string) context.Context {
 	if len(requestId) == 0 {
-		requestId = newObjectId().Hex()
+		requestId = bson.NewObjectId().Hex()
 	}
 	logger := From(ctx)
 	if logger == nil {
