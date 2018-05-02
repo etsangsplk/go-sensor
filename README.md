@@ -1,5 +1,5 @@
-# logging [ ![Codeship Status for splunk/sharedlogging](https://app.codeship.com/projects/abacb120-1375-0136-2114-428a351088a3/status?branch=master)](https://app.codeship.com/projects/283203)
-A standard logging package for golang SSC services to instrument their services according to the [SSC Logging Standard](https://confluence.splunk.com/display/PROD/ERD%3A+Shared+Logging) format including structured logging, request and component loggers, and access tracing.
+# Package logging [ ![Codeship Status for splunk/sharedlogging](https://app.codeship.com/projects/abacb120-1375-0136-2114-428a351088a3/status?branch=master)](https://app.codeship.com/projects/283203)
+The logging package provides a standard for golang SSC services to instrument their services according to the [SSC Logging Standard](https://confluence.splunk.com/display/PROD/ERD%3A+Shared+Logging) format. Features include including structured levelled logging, request loggers, component loggers, and http access tracing. This logging package wraps a more complicated logging package (zap) and exposes just the APIs needed to instrument your service according to the SSC standard.
 
 ## Setup
 Add this line to import:
@@ -14,6 +14,8 @@ Codeship does not have a solution for resolving imports to private repositories.
 2) Adding a 'make dep' target to Makefile to run 'dep ensure'
 3) Removing vendor from .gitignore
 4) Git adding the files under /vendor and submitting
+
+Users of your repository will have to manually delete the vendor directory before they can pull your changes that have the vendor directory contents as part of the repo.
 
 ## Features
 * Implements [Splunk SSC Logging Standards](https://confluence.splunk.com/display/PROD/ERD%3A+Shared+Logging) structured leveled logging
