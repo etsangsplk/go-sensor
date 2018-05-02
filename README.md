@@ -1,13 +1,19 @@
 # logging [ ![Codeship Status for splunk/sharedlogging](https://app.codeship.com/projects/abacb120-1375-0136-2114-428a351088a3/status?branch=master)](https://app.codeship.com/projects/283203)
-A standard logging package for golang SSC services to do context aware tracing in the [SSC Logging Standard](https://confluence.splunk.com/display/PROD/ERD%3A+Shared+Logging) format.
+A standard logging package for golang SSC services to instrument their services according to the [SSC Logging Standard](https://confluence.splunk.com/display/PROD/ERD%3A+Shared+Logging) format including structured logging, request and component loggers, and access tracing.
 
 ## Setup
-Add this line to import (note: current repository is logging and will be changed to ssc-observation as it will contain logging and metrics)
+Add this line to import:
 ```
 import (
 	"github.com/splunk/ssc-observation/logging"
 )
 ```
+### An Important Note About Private Repositories
+Codeship does not have a solution for resolving imports to private repositories. So the recommended approach for using the ssc-observation repository is to checkin your entire vendor directory. For KV Store this meant:
+1) Removing 'dep ensure' steps from Codeship. Even with all the packages checked in it will still try to resolve them for verification (apparently).
+2) Adding a 'make dep' target to Makefile to run 'dep ensure'
+3) Removing vendor from .gitignore
+4) Git adding the files under /vendor and submitting
 
 ## Features
 * Implements [Splunk SSC Logging Standards](https://confluence.splunk.com/display/PROD/ERD%3A+Shared+Logging) structured leveled logging
@@ -19,13 +25,12 @@ Forthcoming features not yet implemented:
 * Load capped sampling: add config support for zap sampling to put a cap on CPU and I/O load
 * Logger sampling: add support to emit a set sampling of traces (for example, 1% of http 200 requests)
 * Distributed tracing: integrate [opentracing-go](https://github.com/opentracing/opentracing-go)
-* Remote logging administration: set logging levels on registered loggers. Related to this would be support for logging 'channels'.
+* Logging administration: remotely set logging levels on registered loggers.
 * A separate dev tool for humanizing logs
-* Add fluent API
 * More middleware HTTP handlers and middleware features:
   * Support for X-DEBUG-TRACE http header to enable debug tracing for that request
   * Tenant context in request tracing
-  * HTTP request/response tracing (errors, sampled non-errors)
+  * HTTP access tracing (errors, sampled non-errors)
 
 ## Quick Start
 ### Basic Usage
@@ -35,15 +40,30 @@ This is how you instantiate a new logger for your service:
 log := logging.New("service1")
 log.Info("Service starting")
 
-// Optionally set it to be the global logger
+// Set it to be the global logger so that adding a log statement doesn't
+// require flowing it through all intermediate functions.
 logging.SetGlobalLogger(log)
 
 // Elsewhere in the service...
 // Access the global logger with logging.Global()
 log = logging.Global()
 log.Info("message1")
-log.SetLevel(logging.DebugLevel)
-if log.Enabled(logging.DebugLevel) {
+
+// Five logging levels are available. Error and Fatal take an err argument which adds {"error": err.Error()}.
+// Requiring both error and message encourages inclusion of a useful contextual message.
+log.Debug("Debug message")
+log.Info("Info message")
+log.Warn("Warn message")
+err := errors.New("Invalid request")
+log.Error(err, "Error message")
+log.Fatal(err, "Fatal message")
+
+// Since this is structured logging it is easy to include sets of key-value pairs in a variadic list.
+// More on this in later sections
+log.Info("Hello World!", "status", status, "duration", elapsed)
+
+// Expensive operations can be guarded with log.DebugEnabled() and log.Enabled(level)
+if log.DebugEnabled() {
 	// ...do something expensive here...
 	log.Debug("message2")
 }
@@ -51,44 +71,41 @@ if log.Enabled(logging.DebugLevel) {
 // Call Flush before service exit
 defer log.Flush()
 ```
-This will trace out the following json line, note the inclusion of standard fields:
+Here is an example output, note the inclusion of standard fields:
 ```json
 {"level":"INFO","time":"2018-04-22T20:42:08.043Z","file":"examples/main.go:61","message":"Starting service","service":"service1","hostname":"df721610cf14"}
 ```
-Five logging levels are available.
-```go
-log := logging.Global()
-log.Debug("This is a debug log entry")
-log.Info("This is an info log entry")
-log.Warn("This is a warning log entry")
 
-// Error and Fatal take an err argument. This traces the error as {"error": err.Error()} and encourages inclusion of a useful message with the error message.
-err := errors.New("Invalid request")
-log.Error(err, "This is a error log entry")
-log.Fatal(err, "This is a fatal log entry")
-```
-The trace functions all include a 'message' parameter and a variadic fields parameter. The fields parameter is an alternating list of keys and values. For example,
+### Structured Logging
+Structured logging means including specific key-value pairs instead of a formatted string. In fact, to encourage structured tracing message no formatting
+methods are included (e.g., no log.Infof("Foo: %s", name)). The trace functions all include a 'message' parameter and a variadic fields parameter. The fields
+parameter is an alternating list of keys and values. As noted above the Fatal() and Error() methods take an err and a message string. For example,
 ```go
+// A structured message with "status" and "duration" fields
 log.Info("Hello World!", "status", status, "duration", elapsed)
-// or formatted vertically
+// Or formatted vertically
 log.Info("Hello World!",
 	"status", status,
-	"duration", elapsed)	
-)
+	"duration", elapsed)
+
+// To facilitate log consumption there are standard logging keys for common key names
+log.Info("S3 bucket created", logging.UrlKey, url)
+// Or for example if you want to trace an error message at the Info level
+log.Info("Request failed, retrying", logging.ErrorKey, err, "retryCount", count)
 ```
-which will produce the line:
+An example output of structured logging:
 ```json
 {"level":"INFO","time":"2018-04-19T15:27:50.185Z","file":"service1/main.go:14","message":"Hello World!","service":"service1","hostname":"df721610cf14","status":200,"duration":"3.3ms"}
 ```
 
-### Adding Logger Fields
-Child loggers can be created with additional fields to be included in each trace output while still including the fields of the parent logger.
+### Adding Logger Fields to Child Loggers
+Child loggers can be created with additional fields to be included in each trace output. The child logger is a clone of the parent logger and will include the fields of the parent logger. Since log.With() creates a clone it should only be used when you need a logger for multiple log traces. It is not a fluent-alternative to using the variadic fields of Info, Error, etc...
 ```go
 log := logging.Global()
 log.Info("Logging with standard fields")
 var value1, value2 string
-log = log.With("custom1", value1, "custom2", value2)
-log.Info("Logging with custom field")
+childLogger := log.With("custom1", value1, "custom2", value2)
+childLogger.Info("Logging with custom field")
 ```
 This will produce the lines:
 ```json
@@ -97,9 +114,9 @@ This will produce the lines:
 ```
 
 ### Request Logging
-Most log tracing will be done in the context of an API request or similarly unique context. The log package has several features to facilitate correlated request traces.
+Most log tracing will be done in the context of an API request or similarly unique context. The log package has several features to facilitate correlated request traces. Request logging relies on integrating with golang's standard context.Context and http.HttpHandler patterns. The context.Context pattern is used to flow the request context (containing the request logger) throughout the API.
 
-The logging.NewRequestHandler function can be added into your services http handler processing pipeline. This handler will add a request-scoped logger to the http request context for each incoming request.
+The logging.NewRequestHandler function can be used to inject a request logging handler into your services http handler processing pipeline. This handler will create a new logger for each http request that will trace the request id. This logger is added to the http request context.
 ```go
 // In your service middleware wire in the logging request handler...
 
@@ -116,7 +133,7 @@ var operation1Handler http.Handler
 operation1Handler = http.HandlerFunc(operation1HandlerFunc)
 
 // Wrap operation1Handler with the request logging handler that will set up
-// request context tracing.
+// request context tracing. Use the global logger as the parent for each request logger.
 operation1Handler = logging.NewRequestHandler(operation1Handler, logging.Global())
 http.Handle("/operation1", operation1Handler)
 ```
@@ -130,18 +147,30 @@ func operation1(ctx context.Context, param1 string) {
 
 	log.Info("Executing operation1", "param1", param1)
 
-	// Example error message, note the special handling for err
-	err := fmt.Errorf("Bad value for param1")
-	log.Error(err, "Bad request", "param1", param1)
+        // Flow context to any routines that take a context including standard db routines
+        rows, err := db.QueryContext(ctx, query, args...)
+        if err != nil {
+   	   log.Error(err, "Query error")
+           return
+        }
+
+        // pass ctx to internal functions too
+        transmogrifier(ctx, rows)
+}
+
+// Internal functions that need logging should take ctx as a first argument
+func transmogrifier(ctx context.Context, rows) {
+       log := logging.From(ctx)
+       log.Info("Transmogrifying")
 }
 ```
+
 The request tracing above will generate the following output, note the requestId standard field.
 ```json
 {"level":"INFO","time":"2018-04-22T20:42:08.047Z","file":"examples/main.go:103","message":"Executing operation1","service":"service1","requestId":"5add5610eb744568c6000001","param1":"value1"}
 {"level":"ERROR","time":"2018-04-22T20:42:08.047Z","file":"examples/main.go:107","message":"Bad request","service":"service1","requestId":"5add5610eb744568c6000001","param1":"value1","error":"Bad value for param1"}
 ```
-Context request tracing can still be used when outside the scope of an http request.
-Simply use logging.NewRequestContext() directly.
+Context request tracing can be set up outside the scope of an http request as well. Simply use logging.NewRequestContext() directly.
 ```go
 func ExampleNonHttpRequest() {
 	requestId := "" // pass "" to let the logger create one
@@ -153,48 +182,47 @@ func ExampleNonHttpRequest() {
 ```
 A complete example for request tracing can be found in the [examples/main.go](https://github.com/splunk/logging/blob/master/examples/main.go).
 
-### Proposal for Fluent-style API
-Feedback has indicated a desire to also have a fluent-style API. This style API provides stronger-typing, stronger organization and a good way to add support for standard keys. These benefits come at the expense of extra verbosity but can be the preferred style when there are many fields to log. The use of a buffer pool (similar to what fmt and zerolog do) keeps the allocation count low.
+### Component Logging
+A component logger is simply a logger used in a specific parts of the program. It traces out {"component": componentName}. There will be features in the future for registering these named loggers so they can be remotely administrated. Component loggers can be useful in non-request paths, for example a goroutine that does background reaping of stale data.
 
-There has also been feedback that adding this will result in the logging API having essentially two APIs. For the moment this API is on hold in the 'future features' bucket.
+A component logger and the context containing it can be created using logging.NewComponentContext(ctx, componentName). The passed in ctx is used to derive the new context with the new component logger. The passed in ctx is also used to get the parent logger via logging.From(ctx). If no logger is found then logging.Global() is used.
+```go
+func reaper(done <-chan struct{}, wg *sync.WaitGroup) {
+	defer wg.Done()
+	ticker := time.NewTicker(TempCollectionCheckInterval)
+	defer ticker.Stop()
+	ctx := logging.NewComponentContext(context.Background(), "lookupReaper")
+	for {
+		select {
+		case <-ticker.C:
+			reapTempCollections(ctx)
+		case <-done:
+			return
+		}
+	}
 
-This API consists of:
-* Infow(), Debugw() etc... methods that take no parameters and return an *Event. The w suffix stands for 'with fields'. Alternate suggestions are welcome. 'f' for 'fluent' is probably not a good option given Sprintf convention.
-* Event type that has Str(key string, value string), Int(key string, value int), etc... methods for each field type supported. Can also have methods like Url(value string) where the key is a pre-defined standard key.
-* To emit the trace the Flush() method must be called. A linting tool could be written to catch this.
+}
+
+func reapTempCollections(ctx context.Context) {
+	log := logging.From(ctx)
+        // code elided...you get the picture by now
+}
+```
+
+### Unit Tests
+Your unit tests will need to be updated to flow in ctx to all the runtime functions that now require it. logging.NewTestContext() can help create that context. Furthermore early-adopters will note that there is no default global logger (for now). You can use TestMain() to set the global logger.
 
 ```go
-// This example demonstrates a fluent-api and contrasts it to the flat style
-func ExampleFluent() {
-	err := fmt.Errorf("An error")
-	name, url := "name1", "http://github.com"
-	value := 10
+func TestMain(m *testing.M) {
+	logging.SetGlobalLogger(logging.New("unit-test"))
+}
 
-	log := logging.New("service1")
-
-	//
-	// The fluent style provides typing and structure but requires a call to .Flush() at the end.
-	// A linting tool could be written to detect missing calls to Flush().
-	// Vertically formatting can be used for long runs
-	// Note how golang errors are handled in the fluent and flat styles
-	//
-	log.Infow("A fluent example").Str("name", name).Int("value", value).Url(url).Flush()
-
-	log.Infow("A fluent example").
-		Str("name", name).
-		Int("value", value).
-		Url(url).
-		Flush()
-
-	log.Errorw(err, "A fluent example").Str("name", name).Int("value", value).Url(url).Flush()
-
-	//
-	// Flat style shown here for comparison
-	// Standard keys like "url" are a bit more tedious in the flat style
-	//
-	log.Info("A flat example", "name", name, "value", value)
-	log.Info("A flat example", "name", name, "value", value, logging.UrlKey, url)
-	log.Error(err, "A flat example", "name", name, "value", value, logging.UrlKey, url)
+func TestCreateCollection(t *testing.T) {
+	ctx := logging.NewTestContext(t.Name())
+        // ...
+	if e := CreateCollection(ctx, testTenant, "app1", "table1"); e != nil {
+		t.Fatal(e)
+	}
 }
 ```
 
@@ -203,10 +231,9 @@ In Logrus, we might do something like:
 ```go
 log.WithFields(log.Fields{"param1": param1, "method": method}).Info("Request")
 ```
-with this package, the equivalent would be in the flat and fluent styles:
+with this package, the equivalent would be:
 ```go
 log.Info("Request", "param1", param1, "method", method)
-log.Info("Request").Str("param1", param1).Str("method", method).Flush()
 ```
 
 ## Real World Examples:
@@ -218,16 +245,11 @@ Below is an example of what the logging output from the KVStore service.
 ```
 
 ## FAQ
-
-* __Any ideas for a shorter pacakge name?__ One idea for a shorter package name is 'lg'. It is idiomatic in go to use short package names for very common packages. Share your feedback if you have ideas on this. It was decided to keep 'log' available as the conventional name for a logger intance. 
-* __Why not have the import be "github.com/splunk/logging"?__ Most likely we will end up with "github.com/splunk/ssc-logging/logging". We will maintain separate repos even for shared packages (simplifies breaking change management) and we need a repo name that is ssc specific.
 * __What is the perf impact of tracing file and line?__ The expectation is that this is cheap enough but will confirm with some benchmarking.
 * __What else will be in this repository?__ Expect the repository to contain logging and metrics APIs but nothing else. It is not the plan to create a single shared library repository.
 * __How can I replace the request logger with customizations when using the request handler?__ In your code you can use ```logger = logger.With(...)``` to create a custom logger and ```ctx = logging.NewContext(ctx, logger)``` to put the logger in the context so logging.From(ctx) can be used in subsequent functions.
 * __Where does the log output go?__ Currently the logging api is not opinionated (beyond defaulting to stdout) as to the destination of the logging output. Need to engage with the k8s folks to see how these are supported: multiple containers in a pod, getting older logs, k8s toolchain support.
-* __What about other languages?__ This effort is focused on a golang API. All services should follow the standard logging format. Ideally services using other languages can work together to define a shared library for their language.
-* __Why aren't their formatting methods like Infof()?__ There are no formatting methods, like log.Infof("Bad param %s", v), to encourage use of structured logging fields. In the rare case you need string formatting use fmt, guarding with an if log.Enabled(level) {} as necessary.
-
+* __What about other languages?__ This effort is focused on a golang. All services should follow the standard logging format. Ideally services using other languages can work together to define a shared library for their language.
 
 ## Troubleshooting
 1. Issue: I wrapped this library's log functions and now `file` does not show the correct file. `"file":"myservice/myloggerwrapper.go:81"`
