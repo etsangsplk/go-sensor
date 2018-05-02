@@ -114,31 +114,87 @@ This will produce the lines:
 ```
 
 ### Request Logging
-Most log tracing will be done in the context of an API request or similarly unique context. The log package has several features to facilitate correlated request traces. Request logging relies on integrating with golang's standard context.Context and http.HttpHandler patterns. The context.Context pattern is used to flow the request context (containing the request logger) throughout the API.
+Request logging is a critical aspect of service instrumentation. With request logging a unique request id flows through the call path of every request (and in the future across service boundaries). A unique request logger is cloned from a parent logger and will trace the request id as {"requestId": requestId} on every log trace. This enables correlation of all request related traces even in the context of highly concurrent request processing. Golang features a core library package context for flowing things like request ids and loggers through a call path and to coordinate features like deadlines and cancellation. The logging package uses context.Context for just this purpose. In other words you don't pass request loggers, you pass 'ctx context.Context'.
 
-Enhancing the http.Request.Context() with a context that contains a request logger can either done explicitly using logging package APIs or by using logging.NewRequestHandler() API to add a logging http handler into the http handler pipeline. Examples for Swagger users are shown farther below. This example will focus on using the logging handler in non-swagger code.
+Http request logging is probably the most common scenario but not the only scenario. For example you could consider pulling a batch of data from kubernetes and processing that through a pipeline as a single request with a unique request id, especially valuable if concurrent requests can flow through the pipeline(s).
 
-The logging.NewRequestHandler function can be used to inject a request logging handler into your services http handler processing pipeline. This handler will create a new logger for each http request that will trace the request id. This logger is added to the http request context.
+
+The log package has several features to facilitate request logging. For http cases there is an http.HttpHandler that can be added to your service pipeline to automatically enhance the incoming http request context with a request logger. The logging.From(ctx) api lets you extract the logger in that context. The NewRequestContext() API lets you directly create a context for scenarios where you are not using an http handler.
+
+In addition to wiring in code to create the request logger, you must also modify the request call path to have 'ctx context.Context' as the first parameter. You may find it useful in places to use context.TODO() as a temporary context as you iteratively transform your code. Finally, context.Background() provides the root context for places where no other context exists.
+
+### Non-HTTP Request Logging
+While not as common, request logging in the non-http case is easy. Simply use logging.NewRequestContext() directly. Note that the parent logger used to clone the request logger from will be taken from the provided context using logging.From(ctx). If not logger is found in ctx then the global logger is used.
+```go
+func ExampleNonHttpRequest() {
+	requestId := "" // pass "" to let the logger create one
+        // NewRequestContext creates a new context with a request logger in it.
+        // If the supplied context as no logger then the global logger is used as the parent logger.
+	ctx := logging.NewRequestContext(context.Background(), requestId)
+	logging.From(ctx).Info("New batch started")
+}
+```
+
+### HTTP Request Logging with Swagger
+Integrating request logging with Swagger generated code is easy. An http handler is added to the pipeline and then ctx is pulled from the http request.
+
+First mix-in a call to logging.NewRequestHandler() in setupGlobalMiddleware() which is found in a file something like configure_kvstore.go. Note that in this case logging.Global() is used to set the parent logger to the request logger. Any custom logger will do.
+```go
+// The middleware configuration happens before anything, this middleware also applies to serving the swagger.json document.
+// So this is a good place to plug in a panic handling middleware, logging and metrics
+func setupGlobalMiddleware(handler http.Handler) http.Handler {
+	return handlers.NewPanicHandler(
+		logging.NewRequestHandler(logging.Global(),
+			handlers.NewHttpAccessLoggingHandler(
+				handlers.NewRateLimitHandler(handler))))
+}
+```
+
+Next extract the context (ctx) from the http request in each strongly-typed swagger handler. And then pass that ctx parameter to the functions implementing that API. In any function you want to use the logger just extract it from ctx using 'log := logging.From(ctx)'
+```go
+func CreateCollectionHandler(params operations.CreateCollectionParams) middleware.Responder {
+	ctx := params.HTTPRequest.Context()
+
+        // Extract the logger from ctx wherever you need it
+        log := logging.From(ctx)
+        log.Info("CreateCollection called")
+
+        // Pass ctx as the first parameter all along the request path
+	if e := kvstore.CreateCollection(ctx, params.Tenant, params.Namespace, *params.Collection.Name); e != nil {
+		return errors.Serve(&operations.CreateCollectionDefault{}, e)
+	}
+	return operations.NewCreateCollectionCreated()
+}
+```
+
+### Http Request Logging without Swagger
+If you are not using Swagger then you will have your own calls to http.Handle() to set up the request routing. This section shows in detail how to accomplish request logging in such a service.
+
+As with the Swagger case, the logging.NewRequestHandler() API is used to add a request logging handler into your services http handler processing pipeline. This handler will create a new logger for each http request that will trace the request id. This logger is added to the http request context.
 ```go
 // In your service middleware wire in the logging request handler...
 
+// Adapt the handler func to an http.Handler
+var handler http.Handler
+handler = http.HandlerFunc(operation1HandlerFunc)
+
+// Wrap operation1Handler with the request logging handler that will set up
+// request context tracing. Use the global logger as the parent for each request logger.
+handler = logging.NewRequestHandler(handler, logging.Global())
+http.Handle("/operation1", handler)
+```
+
+In the middleware handler for each operation pull out the ctx that the NewRequestHandler() handler added to the http request
+```go
 // The middleware handler for operation1 extracts the context and passes it to the
 // strongly-typed operation1() func.
-operation1HandlerFunc := func(w http.ResponseWriter, r *http.Request) {
+func operation1Handler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	param1 := r.URL.Query().Get("param1")
 	operation1(ctx, param1)
 }
-
-// Adapt the handler func to an http.Handler
-var operation1Handler http.Handler
-operation1Handler = http.HandlerFunc(operation1HandlerFunc)
-
-// Wrap operation1Handler with the request logging handler that will set up
-// request context tracing. Use the global logger as the parent for each request logger.
-operation1Handler = logging.NewRequestHandler(operation1Handler, logging.Global())
-http.Handle("/operation1", operation1Handler)
 ```
+
 And then use logging.From(ctx) to get the request logger. The 'ctx context.Context' parameter should be passed throughout the request call path.
 ```go
 // Strongly-typed implementation for service1.operation1.
@@ -172,46 +228,8 @@ The request tracing above will generate the following output, note the requestId
 {"level":"INFO","time":"2018-04-22T20:42:08.047Z","file":"examples/main.go:103","message":"Executing operation1","service":"service1","requestId":"5add5610eb744568c6000001","param1":"value1"}
 {"level":"ERROR","time":"2018-04-22T20:42:08.047Z","file":"examples/main.go:107","message":"Bad request","service":"service1","requestId":"5add5610eb744568c6000001","param1":"value1","error":"Bad value for param1"}
 ```
-Context request tracing can be set up outside the scope of an http request as well. Simply use logging.NewRequestContext() directly.
-```go
-func ExampleNonHttpRequest() {
-	requestId := "" // pass "" to let the logger create one
-        // NewRequestContext creates a new context with a request logger in it.
-        // If the supplied context as no logger then the global logger is used as the parent logger.
-	ctx := logging.NewRequestContext(context.Background(), requestId)
-	logging.From(ctx).Info("New batch started")
-}
-```
+
 A complete example for request tracing can be found in the [examples/main.go](https://github.com/splunk/logging/blob/master/examples/main.go).
-
-### Request Logging with Swagger
-Integrating request logging with Swagger generated code is easy. An http handler is added to the pipeline and then ctx is pulled from the http request.
-
-First mix-in a call to logging.NewRequestHandler() in setupGlobalMiddleware() which is found in a file something like configure_kvstore.go. Note that in this case logging.Global() is used to set the parent logger to the request logger. Any custom logger will do.
-```go
-// The middleware configuration happens before anything, this middleware also applies to serving the swagger.json document.
-// So this is a good place to plug in a panic handling middleware, logging and metrics
-func setupGlobalMiddleware(handler http.Handler) http.Handler {
-	return handlers.NewPanicHandler(
-		logging.NewRequestHandler(logging.Global(),
-			handlers.NewOpenAPIHandler(CmdOptionsValues.StaticDir,
-				handlers.NewHttpAccessLoggingHandler(
-					handlers.NewRateLimitHandler(handler)))))
-}
-```
-
-Next extract the context (ctx) from the http request in each strongly-typed swagger handler. And then pass that ctx parameter to the functions implementing that API. In any function you want to use the logger just extract it from ctx using 'log := logging.From(ctx)'
-```go
-func CreateCollectionHandler(params operations.CreateCollectionParams) middleware.Responder {
-	ctx := params.HTTPRequest.Context()
-        log := logging.From(ctx)
-        log.Info("CreateCollection called")
-	if e := kvstore.CreateCollection(ctx, params.Tenant, params.Namespace, *params.Collection.Name); e != nil {
-		return errors.Serve(&operations.CreateCollectionDefault{}, e)
-	}
-	return operations.NewCreateCollectionCreated()
-}
-```
 
 ### Component Logging
 A component logger is simply a logger used in a specific parts of the program. It traces out {"component": componentName}. There will be features in the future for registering these named loggers so they can be remotely administrated. Component loggers can be useful in non-request paths, for example a goroutine that does background reaping of stale data.
