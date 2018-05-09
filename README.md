@@ -182,7 +182,7 @@ handler = http.HandlerFunc(operation1HandlerFunc)
 
 // Wrap operation1Handler with the request logging handler that will set up
 // request context tracing. Use the global logger as the parent for each request logger.
-handler = logging.NewRequestHandler(handler, logging.Global())
+handler = logging.NewRequestHandler(logging.Global(), handler)
 http.Handle("/operation1", handler)
 ```
 
