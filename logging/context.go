@@ -90,7 +90,7 @@ func NewRequestHandler(parentLogger *Logger, handler http.Handler) *RequestHandl
 }
 
 func (self *RequestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	requestId := "" // TODO: extract this from request headers if it is there
+	requestId := r.Header.Get("X-Request-ID")
 	ctx := r.Context()
 	if self.parentLogger != nil {
 		ctx = NewContext(ctx, self.parentLogger)
