@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -121,4 +122,16 @@ func TestHostname(t *testing.T) {
 func TestFormatting(t *testing.T) {
 	log := New("testLogger")
 	log.Info("Time duration", "duration", time.Second*5, "durationString", (time.Second * 5).String())
+}
+
+func TestLock(t *testing.T) {
+	s := Lock(os.Stdout)
+	assert.NotNil(t, s)
+	s = Lock(os.Stderr)
+	assert.NotNil(t, s)
+	s = Lock(ioutil.Discard)
+	assert.NotNil(t, s)
+	var anyWriter io.Writer
+	s = Lock(anyWriter)
+	assert.NotNil(t, s)
 }
