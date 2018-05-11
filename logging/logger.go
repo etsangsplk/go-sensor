@@ -83,6 +83,15 @@ func NewWithOutput(serviceName string, writer WriteSyncer) *Logger {
 	return &Logger{logger.Sugar(), &atomLevel}
 }
 
+// NewNoOp returns a no-op Logger, which writes out logs or internal errors,
+// useful for unit testing
+func NewNoOp() *Logger {
+    // Does not matter what level as this is NoOp.
+    atomLevel := zap.NewAtomicLevelAt(InfoLevel)
+    logger := zap.New(nil)
+    return &Logger{logger.Sugar(), &atomLevel}
+}
+
 // utcTimeEncoder encodes the time as a UTC ISO8601 timestamp
 func utcTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(t.UTC().Format("2006-01-02T15:04:05.000Z"))
