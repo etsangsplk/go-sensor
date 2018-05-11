@@ -1,4 +1,5 @@
-# Package logging [ ![Codeship Status for splunk/sharedlogging](https://app.codeship.com/projects/abacb120-1375-0136-2114-428a351088a3/status?branch=master)](https://app.codeship.com/projects/283203)
+# Package logging [[ ![Codeship Status for splunk/ssc-observation](https://app.codeship.com/projects/f6131db0-3764-0136-f72e-36b905590d28/status?branch=master)](https://app.codeship.com/projects/289654)
+
 The logging package provides a standard for golang SSC services to instrument their services according to the [SSC Logging Standard](https://confluence.splunk.com/display/PROD/ERD%3A+Shared+Logging) format. Features include structured leveled logging, request loggers, component loggers, and http access tracing. This logging package wraps a more complicated logging package (zap) and exposes just the APIs needed to instrument your service according to the SSC standard.
 
 ## Setup
