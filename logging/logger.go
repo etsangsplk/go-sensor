@@ -2,10 +2,10 @@ package logging
 
 import (
 	"os"
+    "time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"time"
 )
 
 type Level = zapcore.Level
@@ -56,7 +56,7 @@ type Logger struct {
 // The serviceName argument will be traced as the standard "service"
 // field on every trace.
 func New(serviceName string) *Logger {
-	return NewWithOutput(serviceName, zapcore.Lock(os.Stdout))
+	return NewWithOutput(serviceName, Lock(os.Stdout))
 }
 
 // NewWithOutput constructs a new logger and writes output to writer
