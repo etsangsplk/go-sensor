@@ -3,9 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+    "time"
+    "io/ioutil"
 	"net"
 	"net/http"
 	"sync"
+
+    "gopkg.in/mgo.v2/bson"
+    "gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/splunk/ssc-observation/logging"
 )
@@ -14,6 +19,7 @@ func main() {
 	ExampleGlobalLogger()
 	ExampleServiceRequestLogger()
 	ExampleNonHttpRequest()
+	ExampleUseExternalLogRotationPackage()
 	// ExampleFluent()
 }
 
@@ -139,37 +145,56 @@ func ExampleNonHttpRequest() {
 	logging.From(ctx).Info("New batch started")
 }
 
+// Use third party log rotation package (e.g. lumberjack)
+func ExampleUseExternalLogRotationPackage() {
+	// Use a new logger to avoid collision from rest of examples
+    f := bson.NewObjectId().Hex()
+    // ignoring err for clarity
+    yourFile, _:= ioutil.TempFile("", f)
+    fmt.Printf("Your new log file: %v", yourFile.Name())
+    // defer os.Remove(yourFile.Name())
+	var lumLog = &lumberjack.Logger{
+		Filename:   yourFile.Name(),
+		MaxSize:    10, // megabytes
+		MaxBackups: 3,  // number of log files
+		MaxAge:     3,  // days
+	}
+	log := logging.NewWithOutput("uselumberjack", logging.Lock(lumLog))
+    now := time.Now().String()
+	log.Info(now)
+}
+
 /*
 // This example demonstrates a fluent-api and contrasts it to the flat style
 func ExampleFluent() {
-	err := fmt.Errorf("An error")
-	name, url := "name1", "http://github.com"
-	value := 10
+    err := fmt.Errorf("An error")
+    name, url := "name1", "http://github.com"
+    value := 10
 
-	log := logging.New("service1")
+    log := logging.New("service1")
 
-	//
-	// The fluent style provides typing and structure but requires a call to .Flush() at the end.
-	// A linting tool could be written to detect missing calls to Flush().
-	// Vertically formatting can be used for long runs
-	// Note how golang errors are handled in the fluent and flat styles
-	//
-	log.Infow("A fluent example").Str("name", name).Int("value", value).Url(url).Flush()
+    //
+    // The fluent style provides typing and structure but requires a call to .Flush() at the end.
+    // A linting tool could be written to detect missing calls to Flush().
+    // Vertically formatting can be used for long runs
+    // Note how golang errors are handled in the fluent and flat styles
+    //
+    log.Infow("A fluent example").Str("name", name).Int("value", value).Url(url).Flush()
 
-	log.Infow("A fluent example").
-		Str("name", name).
-		Int("value", value).
-		Url(url).
-		Flush()
+    log.Infow("A fluent example").
+        Str("name", name).
+        Int("value", value).
+        Url(url).
+        Flush()
 
-	log.Errorw(err, "A fluent example").Str("name", name).Int("value", value).Url(url).Flush()
+    log.Errorw(err, "A fluent example").Str("name", name).Int("value", value).Url(url).Flush()
 
-	//
-	// Flat style shown here for comparison
-	// Standard keys like "url" are a bit more tedious in the flat style
-	//
-	log.Info("A flat example", "name", name, "value", value)
-	log.Info("A flat example", "name", name, "value", value, logging.UrlKey, url)
-	log.Error(err, "A flat example", "name", name, "value", value, logging.UrlKey, url)
+    //
+    // Flat style shown here for comparison
+    // Standard keys like "url" are a bit more tedious in the flat style
+    //
+    log.Info("A flat example", "name", name, "value", value)
+    log.Info("A flat example", "name", name, "value", value, logging.UrlKey, url)
+    log.Error(err, "A flat example", "name", name, "value", value, logging.UrlKey, url)
 }
 */
