@@ -135,3 +135,20 @@ func TestLock(t *testing.T) {
 	s = Lock(anyWriter)
 	assert.NotNil(t, s)
 }
+
+func TestLockToAFileStream(t *testing.T) {
+    // Use Now as test string to write to a temp file to validate.
+    f, err := ioutil.TempFile("", "")
+    defer os.Remove(f.Name())
+    assert.NoError(t, err)
+    _, err = ioutil.ReadFile(f.Name())
+    log := NewWithOutput("testlogtempfile", f)
+    now:= time.Now().String()
+    log.Info(now) // Write current time 
+    // Read contents for validation.
+    newContentsBytes, err := ioutil.ReadFile(f.Name())
+    assert.NoError(t, err) 
+    s := string(newContentsBytes[:])
+    assert.Contains(t, s, now) 
+}
+
