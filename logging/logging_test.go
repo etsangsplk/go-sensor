@@ -124,19 +124,19 @@ func TestFormatting(t *testing.T) {
 	log.Info("Time duration", "duration", time.Second*5, "durationString", (time.Second * 5).String())
 }
 
-func TestLock(t *testing.T) {
-	s := Lock(os.Stdout)
+func TestSetOutput(t *testing.T) {
+	s := SetOutput(os.Stdout)
 	assert.NotNil(t, s)
-	s = Lock(os.Stderr)
+	s = SetOutput(os.Stderr)
 	assert.NotNil(t, s)
-	s = Lock(ioutil.Discard)
+	s = SetOutput(ioutil.Discard)
 	assert.NotNil(t, s)
 	var anyWriter io.Writer
-	s = Lock(anyWriter)
+	s = SetOutput(anyWriter)
 	assert.NotNil(t, s)
 }
 
-func TestLockToAFileStream(t *testing.T) {
+func TestSetOutputToAFileStream(t *testing.T) {
 	// Setup random log file and current timestamp as log string
 	// for easy verification.
 	name := fmt.Sprintf("%v-%v", os.Getpid(), time.Now().Second())

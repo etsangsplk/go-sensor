@@ -14,7 +14,6 @@ func main() {
 	ExampleGlobalLogger()
 	ExampleServiceRequestLogger()
 	ExampleNonHttpRequest()
-	// ExampleFluent()
 }
 
 // The global logger is used for code paths that do not have a Context, for

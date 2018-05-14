@@ -57,11 +57,11 @@ type Logger struct {
 // The serviceName argument will be traced as the standard "service"
 // field on every trace.
 func New(serviceName string) *Logger {
-	return NewWithOutput(serviceName, Lock(os.Stdout))
+	return NewWithOutput(serviceName, SetOutput(os.Stdout))
 }
 
 // NewWithOutput constructs a new logger and writes output to writer
-func NewWithOutput(serviceName string, writer WriteSyncer) *Logger {
+func NewWithOutput(serviceName string, writer io.Writer) *Logger {
 	encoderCfg := zapcore.EncoderConfig{
 		MessageKey:     MessageKey,
 		LevelKey:       LevelKey,
@@ -75,7 +75,7 @@ func NewWithOutput(serviceName string, writer WriteSyncer) *Logger {
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 	atomLevel := zap.NewAtomicLevelAt(InfoLevel)
-	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), writer, &atomLevel)
+	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), SetOutput(writer), &atomLevel)
 	requiredFields := zap.Fields(
 		zap.String("service", serviceName),
 		zap.String("hostname", os.Getenv("HOSTNAME")))
@@ -170,9 +170,10 @@ func (l *Logger) With(fields ...interface{}) *Logger {
 	return child
 }
 
-// Lock is an convenient function to convert from generic golang io.writer.
-func Lock(w io.Writer) WriteSyncer {
-	// AddSync tries to intelligently convert to right tye for Lock
+// SetOutput converts anything that implements io.Writer to WriteSyncer.
+// If input already implements Sync(), it will just pass through.
+func SetOutput(w io.Writer) WriteSyncer {
+	// If w already is a WriteSyncer, it won't wrap that again.
 	writer := zapcore.AddSync(w)
 	return zapcore.Lock(writer)
 }
