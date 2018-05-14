@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -138,20 +137,18 @@ func TestLock(t *testing.T) {
 }
 
 func TestLockToAFileStream(t *testing.T) {
-	// Setup random log file and current timestamp as log string 
+	// Setup random log file and current timestamp as log string
 	// for easy verification.
-	name :=  bson.NewObjectId().Hex()
+	name := fmt.Sprintf("%v-%v", os.Getpid(), time.Now().Second())
 	f, err := ioutil.TempFile("", name)
 	defer os.Remove(f.Name())
 	assert.NoError(t, err)
 	_, err = ioutil.ReadFile(f.Name())
 	log := NewWithOutput("testlogtempfile", f)
-	// Write current time
-	now := time.Now().String()
-	log.Info(now)
-	// Read contents for validation.
+	log.Info(fmt.Sprintf("you log message in file %v", name))
+	// Read file content for validation.
 	newContentsBytes, err := ioutil.ReadFile(f.Name())
 	assert.NoError(t, err)
 	s := string(newContentsBytes[:])
-	assert.Contains(t, s, now)
+	assert.Contains(t, s, name)
 }
