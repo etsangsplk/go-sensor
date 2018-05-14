@@ -14,7 +14,6 @@ func main() {
 	ExampleGlobalLogger()
 	ExampleServiceRequestLogger()
 	ExampleNonHttpRequest()
-	ExampleUseExternalLogRotationPackage()
 	// ExampleFluent()
 }
 
