@@ -10,7 +10,6 @@ import (
 )
 
 type Level = zapcore.Level
-type WriteSyncer = zapcore.WriteSyncer
 
 const (
 	DebugLevel = zapcore.DebugLevel
@@ -172,7 +171,7 @@ func (l *Logger) With(fields ...interface{}) *Logger {
 
 // lockWriter converts anything that implements io.Writer to WriteSyncer.
 // If input already implements Sync(), it will just pass through.
-func lockWriter(w io.Writer) WriteSyncer {
+func lockWriter(w io.Writer) zapcore.WriteSyncer {
 	// If w already is a WriteSyncer, it won't wrap that again.
 	writer := zapcore.AddSync(w)
 	return zapcore.Lock(writer)
