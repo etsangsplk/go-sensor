@@ -9,14 +9,14 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type Level = zapcore.Level
+type Level zapcore.Level
 
 const (
-	DebugLevel = zapcore.DebugLevel
-	InfoLevel  = zapcore.InfoLevel
-	WarnLevel  = zapcore.WarnLevel
-	ErrorLevel = zapcore.ErrorLevel
-	FatalLevel = zapcore.FatalLevel
+	DebugLevel = Level(zapcore.DebugLevel)
+	InfoLevel  = Level(zapcore.InfoLevel)
+	WarnLevel  = Level(zapcore.WarnLevel)
+	ErrorLevel = Level(zapcore.ErrorLevel)
+	FatalLevel = Level(zapcore.FatalLevel)
 )
 
 // Constants for standard field key names
@@ -73,7 +73,7 @@ func NewWithOutput(serviceName string, writer io.Writer) *Logger {
 		EncodeDuration: zapcore.StringDurationEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
-	atomLevel := zap.NewAtomicLevelAt(InfoLevel)
+	atomLevel := zap.NewAtomicLevelAt(zapcore.InfoLevel)
 	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), lockWriter(writer), &atomLevel)
 	requiredFields := zap.Fields(
 		zap.String("service", serviceName),
@@ -137,23 +137,23 @@ func (l *Logger) Fatal(err error, msg string, fields ...interface{}) {
 // DebugEnabled returns true if the debug log level or lower is enabled.
 // It is a shortcut for Enabled(logging.DebugLevel)
 func (l *Logger) DebugEnabled() bool {
-	return l.level.Enabled(DebugLevel)
+	return l.level.Enabled(zapcore.DebugLevel)
 }
 
 // Enabled returns true if the specified log level is enabled
 func (l *Logger) Enabled(level Level) bool {
-	return l.level.Enabled(level)
+	return l.level.Enabled(zapcore.Level(level))
 }
 
 // SetLevel sets the specified log level. The level will be modified for all loggers
 // cloned from the same root parent logger.
 func (l *Logger) SetLevel(level Level) {
-	l.level.SetLevel(level)
+	l.level.SetLevel(zapcore.Level(level))
 }
 
 // Level gets the log level
 func (l *Logger) Level() Level {
-	return l.level.Level()
+	return Level(l.level.Level())
 }
 
 // With constructs a clone of logger with the addition of fields which are
