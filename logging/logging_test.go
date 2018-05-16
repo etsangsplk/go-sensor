@@ -108,6 +108,18 @@ func TestNewWithOuput(t *testing.T) {
 	assert.Contains(t, s[1], `"hello":"world"`)
 }
 
+
+func TestNoOp(t *testing.T) {
+    outC, w := StartLogCapturing()
+    // Since parent logger is NoOp, child is too
+    logger := NewNoOp()
+    ctxLogger := logger.With("hello", "world")
+    logger.Info("parent does not contain hello world")
+    ctxLogger.Info("child contains hello world")
+    s := StopLogCapturing(outC, w)
+    assert.Equal(t, []string{""}, s, "No lines should be emitted. ")
+}
+
 func TestHostname(t *testing.T) {
 	outC, w := StartLogCapturing()
 	os.Setenv("HOSTNAME", "testhostname")
