@@ -60,9 +60,9 @@ func New(serviceName string) *Logger {
 }
 
 // NewWithOutput constructs a new logger and writes output to writer
-// lockableWriter is a io.writer that also supports concurrent writes.
+// writer is a io.writer that also supports concurrent writes.
 // In other words, it must implement io.writer and a Sync() method 
-func NewWithOutput(serviceName string, lockableWriter io.Writer) *Logger {
+func NewWithOutput(serviceName string, writer io.Writer) *Logger {
 	encoderCfg := zapcore.EncoderConfig{
 		MessageKey:     MessageKey,
 		LevelKey:       LevelKey,
@@ -76,11 +76,11 @@ func NewWithOutput(serviceName string, lockableWriter io.Writer) *Logger {
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 	atomLevel := zap.NewAtomicLevelAt(zapcore.InfoLevel)
+    stacktrace := zap.AddStacktrace(zap.FatalLevel)
 	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), lockWriter(writer), &atomLevel)
 	requiredFields := zap.Fields(
 		zap.String("service", serviceName),
 		zap.String("hostname", os.Getenv("HOSTNAME")))
-	stacktrace := zap.AddStacktrace(zap.FatalLevel)
 	logger := zap.New(core, requiredFields, stacktrace, zap.AddCaller(), zap.AddCallerSkip(1))
 	return &Logger{logger.Sugar(), &atomLevel}
 }
