@@ -90,10 +90,10 @@ func NewRequestHandler(parentLogger *Logger, handler http.Handler) *RequestHandl
 }
 
 func (self *RequestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// r.Header.Get("X-Request-ID") will return a uuid requestId if there is one
+	// r.Header.Get("X-REQUEST-ID") will return a uuid requestId if there is one
 	// or else an empty string, that can be forwarded downstream.
 	// This is useful for tracing and/or correlation.
-	requestId := r.Header.Get("X-Request-ID")
+	requestId := r.Header.Get("X-REQUEST-ID")
 	ctx := r.Context()
 	if self.parentLogger != nil {
 		ctx = NewContext(ctx, self.parentLogger)
