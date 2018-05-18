@@ -1,4 +1,4 @@
-# Package logging [[ ![Codeship Status for splunk/ssc-observation](https://app.codeship.com/projects/f6131db0-3764-0136-f72e-36b905590d28/status?branch=master)](https://app.codeship.com/projects/289654)
+# Package logging [ ![Codeship Status for splunk/ssc-observation](https://app.codeship.com/projects/f6131db0-3764-0136-f72e-36b905590d28/status?branch=master)](https://app.codeship.com/projects/289654)
 
 The logging package provides a standard for golang SSC services to instrument their services according to the [SSC Logging Standard](https://confluence.splunk.com/display/PROD/ERD%3A+Shared+Logging) format. Features include structured leveled logging, request loggers, component loggers, and http access tracing. This logging package wraps a more complicated logging package (zap) and exposes just the APIs needed to instrument your service according to the SSC standard.
 
@@ -35,6 +35,17 @@ Forthcoming features not yet implemented:
   * Support for X-DEBUG-TRACE http header to enable debug tracing for that request
   * Tenant context in request tracing
   * HTTP access tracing (errors, sampled non-errors)
+
+## Proper API Usage
+Here is a list of common conventions to follow:
+1) Capitalize the first letter in a message, do not end with punctuation.
+2) Make 'ctx context.Context' the first parameter and name the parameter 'ctx'.
+3) Pass ctx not logger instances as function parameters, context is more general and can more useful capabilities beyond loggers.
+4) log.With() is for creating a new child logger that is a clone of the parent. Do not mistake this for a fluent-style API, never do log.With().Info().
+5) log.Warn() calls should be rare or non-existent, most should either be Info() or Error().
+6) Request contexts should typically flow as function parameters, only store a request context on an instance if the instance is request-scoped. It is more common to store a component context on an instance.
+7) Be judicious in logging in a shared library, consider returning an error with richer context instead and letting the containing service decide what to log, or providing a callback interface with the information to log (as Swagger does).
+8) Objects can be logged out as fields (as long as they are JSON marshalable), but avoid tracing objects that are more than one level deep, likewise for arrays.
 
 ## Basic Usage
 This is how you instantiate a new logger for your service:
@@ -293,6 +304,8 @@ Your unit tests will need to be updated to flow in ctx to all the runtime functi
 ```go
 func TestMain(m *testing.M) {
 	logging.SetGlobalLogger(logging.New("unit-test"))
+	// Run the tests
+	os.Exit(m.Run())
 }
 
 func TestCreateCollection(t *testing.T) {

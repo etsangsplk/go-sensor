@@ -54,14 +54,14 @@ type Logger struct {
 
 // New constructs a new logger using the default stdout for output.
 // The serviceName argument will be traced as the standard "service"
-// field on every trace. 
+// field on every trace.
 func New(serviceName string) *Logger {
 	return NewWithOutput(serviceName, os.Stdout)
 }
 
 // NewWithOutput constructs a new logger and writes output to writer
 // writer is a io.writer that also supports concurrent writes.
-// In other words, it must implement io.writer and a Sync() method 
+// In other words, it must implement io.writer and a Sync() method
 func NewWithOutput(serviceName string, writer io.Writer) *Logger {
 	encoderCfg := zapcore.EncoderConfig{
 		MessageKey:     MessageKey,
@@ -76,7 +76,7 @@ func NewWithOutput(serviceName string, writer io.Writer) *Logger {
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 	atomLevel := zap.NewAtomicLevelAt(zapcore.InfoLevel)
-    stacktrace := zap.AddStacktrace(zap.FatalLevel)
+	stacktrace := zap.AddStacktrace(zap.FatalLevel)
 	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), lockWriter(writer), &atomLevel)
 	requiredFields := zap.Fields(
 		zap.String("service", serviceName),
@@ -88,10 +88,10 @@ func NewWithOutput(serviceName string, writer io.Writer) *Logger {
 // NewNoOp returns a no-op Logger, which writes out logs or internal errors,
 // useful for unit testing
 func NewNoOp() *Logger {
-    // Does not matter what level as this is NoOp.
-    atomLevel := zap.NewAtomicLevelAt(InfoLevel)
-    logger := zap.New(nil)
-    return &Logger{logger.Sugar(), &atomLevel}
+	// Does not matter what level as this is NoOp.
+	atomLevel := zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	logger := zap.New(nil)
+	return &Logger{logger.Sugar(), &atomLevel}
 }
 
 // utcTimeEncoder encodes the time as a UTC ISO8601 timestamp
