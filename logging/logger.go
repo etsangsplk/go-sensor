@@ -1,22 +1,22 @@
 package logging
 
 import (
+	"io"
 	"os"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"time"
 )
 
-type Level = zapcore.Level
-type WriteSyncer = zapcore.WriteSyncer
+type Level zapcore.Level
 
 const (
-	DebugLevel = zapcore.DebugLevel
-	InfoLevel  = zapcore.InfoLevel
-	WarnLevel  = zapcore.WarnLevel
-	ErrorLevel = zapcore.ErrorLevel
-	FatalLevel = zapcore.FatalLevel
+	DebugLevel = Level(zapcore.DebugLevel)
+	InfoLevel  = Level(zapcore.InfoLevel)
+	WarnLevel  = Level(zapcore.WarnLevel)
+	ErrorLevel = Level(zapcore.ErrorLevel)
+	FatalLevel = Level(zapcore.FatalLevel)
 )
 
 // Constants for standard field key names
@@ -54,13 +54,15 @@ type Logger struct {
 
 // New constructs a new logger using the default stdout for output.
 // The serviceName argument will be traced as the standard "service"
-// field on every trace.
+// field on every trace. 
 func New(serviceName string) *Logger {
-	return NewWithOutput(serviceName, zapcore.Lock(os.Stdout))
+	return NewWithOutput(serviceName, os.Stdout)
 }
 
 // NewWithOutput constructs a new logger and writes output to writer
-func NewWithOutput(serviceName string, writer WriteSyncer) *Logger {
+// writer is a io.writer that also supports concurrent writes.
+// In other words, it must implement io.writer and a Sync() method 
+func NewWithOutput(serviceName string, writer io.Writer) *Logger {
 	encoderCfg := zapcore.EncoderConfig{
 		MessageKey:     MessageKey,
 		LevelKey:       LevelKey,
@@ -73,12 +75,12 @@ func NewWithOutput(serviceName string, writer WriteSyncer) *Logger {
 		EncodeDuration: zapcore.StringDurationEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
-	atomLevel := zap.NewAtomicLevelAt(InfoLevel)
-	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), writer, &atomLevel)
+	atomLevel := zap.NewAtomicLevelAt(zapcore.InfoLevel)
+    stacktrace := zap.AddStacktrace(zap.FatalLevel)
+	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), lockWriter(writer), &atomLevel)
 	requiredFields := zap.Fields(
 		zap.String("service", serviceName),
 		zap.String("hostname", os.Getenv("HOSTNAME")))
-	stacktrace := zap.AddStacktrace(zap.FatalLevel)
 	logger := zap.New(core, requiredFields, stacktrace, zap.AddCaller(), zap.AddCallerSkip(1))
 	return &Logger{logger.Sugar(), &atomLevel}
 }
@@ -146,23 +148,23 @@ func (l *Logger) Fatal(err error, msg string, fields ...interface{}) {
 // DebugEnabled returns true if the debug log level or lower is enabled.
 // It is a shortcut for Enabled(logging.DebugLevel)
 func (l *Logger) DebugEnabled() bool {
-	return l.level.Enabled(DebugLevel)
+	return l.level.Enabled(zapcore.DebugLevel)
 }
 
 // Enabled returns true if the specified log level is enabled
 func (l *Logger) Enabled(level Level) bool {
-	return l.level.Enabled(level)
+	return l.level.Enabled(zapcore.Level(level))
 }
 
 // SetLevel sets the specified log level. The level will be modified for all loggers
 // cloned from the same root parent logger.
 func (l *Logger) SetLevel(level Level) {
-	l.level.SetLevel(level)
+	l.level.SetLevel(zapcore.Level(level))
 }
 
 // Level gets the log level
 func (l *Logger) Level() Level {
-	return l.level.Level()
+	return Level(l.level.Level())
 }
 
 // With constructs a clone of logger with the addition of fields which are
@@ -176,4 +178,12 @@ func (l *Logger) With(fields ...interface{}) *Logger {
 	child := l.clone()
 	child.sugared = l.sugared.With(fields...)
 	return child
+}
+
+// lockWriter converts anything that implements io.Writer to WriteSyncer.
+// If input already implements Sync(), it will just pass through.
+func lockWriter(w io.Writer) zapcore.WriteSyncer {
+	// If w already is a WriteSyncer, it won't wrap that again.
+	writer := zapcore.AddSync(w)
+	return zapcore.Lock(writer)
 }

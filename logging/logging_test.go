@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -133,4 +134,33 @@ func TestHostname(t *testing.T) {
 func TestFormatting(t *testing.T) {
 	log := New("testLogger")
 	log.Info("Time duration", "duration", time.Second*5, "durationString", (time.Second * 5).String())
+}
+
+func TestlockWriter(t *testing.T) {
+	s := lockWriter(os.Stdout)
+	assert.NotNil(t, s)
+	s = lockWriter(os.Stderr)
+	assert.NotNil(t, s)
+	s = lockWriter(ioutil.Discard)
+	assert.NotNil(t, s)
+	var anyWriter io.Writer
+	s = lockWriter(anyWriter)
+	assert.NotNil(t, s)
+}
+
+func TestlockWriterToAFileStream(t *testing.T) {
+	// Setup random log file and current timestamp as log string
+	// for easy verification.
+	name := fmt.Sprintf("%v-%v", os.Getpid(), time.Now().Second())
+	f, err := ioutil.TempFile("", name)
+	defer os.Remove(f.Name())
+	assert.NoError(t, err)
+	_, err = ioutil.ReadFile(f.Name())
+	log := NewWithOutput("testlogtempfile", f)
+	log.Info(fmt.Sprintf("you log message in file %v", name))
+	// Read file content for validation.
+	newContentsBytes, err := ioutil.ReadFile(f.Name())
+	assert.NoError(t, err)
+	s := string(newContentsBytes[:])
+	assert.Contains(t, s, name)
 }
