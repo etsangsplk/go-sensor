@@ -4,18 +4,19 @@ SSC services use this metrics package combined with the [Prometheus client APIs]
 
 ## Status
 __WORK IN PROGRESS - PROPOSAL__
+
 This document proposes an API for metrics instrumentation of SSC Services written in Golang. Send feedback to ychristensen@splunk.com
 
 ## Concepts
-Metrics instrumentation enables observability of a service by regularly externalizing key measurements taken inside the service into a time series of data.
+Metrics instrumentation enables observability of a service by externalizing key measurements taken inside the service into a time series of numeric data.
  
 The core concepts are:
-* __Metric__: A time series of numeric values to be observed. There are different types of metrics such as gauge, counter, histogram and summary.
-* __Metric Dimensions__: Dimensions (labels) partition the metric data into different pivots. For example http request may be partitioned by http method (“GET”, “POST”) and status code (500, 200, 429). 
-* __Metrics Server__: The server(s) that supports metrics ingest, metrics storage and metrics query and aggregation. A metrics server exploits special characteristics of time series data to optimize all of these features.
+* __Metric__: A time series of numeric values to be observed. The different metrics types gauge, counter, histogram and summary each have unique capabilities.
+* __Metric Dimensions__: Dimensions (labels) partition the metric data into different pivots. For example an http request may be partitioned by http method values (“GET”, “POST”, ...) and status code values (500, 200, 429, ...). 
+* __Metrics Server__: The server that provides metrics ingest, storage and query. A metrics server exploits special characteristics of time series data to optimize all of these features.
 * __Instrumented Service__: The service that is instrumented with both custom and standard metrics. For example, the KV Store Service.
 
-Metric dimensions (also called labels) are a powerfully important capability. Dimensions enable you to zoom in and out into broader or narrower slices of the metrics data. Using query aggregation functions you can analyze different dimensions of the data without having to declare new metrics in the code for each pivot. For example, http request rates for all http POST requests, or all GET requests that were throttled (status=429).
+Metric dimensions (also called labels) are a powerfully important capability. Dimensions enable the operations engineer analyze the broader and narrower slices of the metrics data. Using query aggregation functions you can analyze different dimensions of the data without having to declare new metrics in the code for each pivot. For example, http request rates for all http POST requests, or all GET requests that were throttled (status=429), or simply all http requests across all service replicas.
 
 ## Basic Usage
 This example demonstrates 1) defining a metric with labels (dimensions) and 2) externalizing (observing) the metric values to the metrics server. It defines a simple gauge metric to monitor the number of open database connections. Gauge is the right metric type to choose since open connections is a value that can increase and decrease. 
@@ -42,7 +43,7 @@ func init() {
 With the metric defined we can now instrument our runtime code to observe the metric. In this case the simplified getDb() function is the chosen place to observe the metric. This is a good place because this function is called by each request to get the proper connection pool (sql.DB) for the target host.
 
 ```go
-func getDb(host string, database string) *sql.DB {
+func getDB(host string, database string) *sql.DB {
      db := ensureConnected(host, database)
 
      // Observe metrics
@@ -85,9 +86,11 @@ Note that other shared libraries such as the IAC client library will define and 
 Defining a metric involves choosing the metric type, defining the metric name, and the labels (if any) that will be used to dimension the observations. If one or more labels are defined then you will declare a vector of metrics like CounterVec. A metrics vector is a collector of a bundle of metrics. The bundle exists because each unique set of metric name and key-value pairs observed at runtime will define a new time series. For example, for the labels “method” and “statusCode” on the metric “http_requests_total” you might get three time series:
 * {"http_requests_total", "method", "POST", "statusCode", "200"}
 * {"http_requests_total", "method", "POST", "statusCode", "500"}
-* {"http_requests_total", "method", "GET", "statusCode", "200"} 
-When "GET" and "429" are later observed then a new time series is created. 
-* {"http_requests_total", "method", "GET", "statusCode", "429"} 
+* {"http_requests_total", "method", "GET", "statusCode", "200"}
+
+A new time series will be created when new values "GET" and "429" are later observed.
+* {"http_requests_total", "method", "GET", "statusCode", "429"}
+
 From the perspective of the service instrumentation this all happens behind the scenes. 
 
 Defining histograms and services requires additional configuration. For histograms you must define the buckets that the observations will be collected in. The default [prometheus.DefBuckets](https://godoc.org/github.com/prometheus/client_golang/prometheus#pkg-variables) provides a good starting point for network service request latencies.  Similarly summaries have more complex configuration as well, see [SummaryOpts](https://godoc.org/github.com/prometheus/client_golang/prometheus#SummaryOpts).
@@ -131,7 +134,7 @@ func Register() {
 Once defined and registered the service code must be instrumented to observe the metric values to the Prometheus server. Recall that Prometheus is pull based so from the service perspective observing a metric value is a local memory operation. The value observed will be folded into previous observations since the last scrape. For example, if a gauge is observed multiple times between scrapes only the latest value will be ingested into the Prometheus server. 
 
 Building on the database metrics defined above one would observe runtime values with code like the following. A couple of notes:
-* Separate metrics are not needed for counting successful and non-successful database commands. Or for insight into the different database commands like "create", "delete", and "select". Instead a single counter metric is all that is needed and the labels are used to create the different time series (dimensions). This means the operations engineer can easily define all the different aggregations they want without modifying service code. For example to look at all error counts or only look at "create" and "drop" commands.
+* WithLabelValues() is used to get the specific time series for the given set of label values.
 * All label values must be converted to strings.
 
 Here is the code to observe the latency histogram and db request counter metrics.
@@ -141,8 +144,9 @@ Here is the code to observe the latency histogram and db request counter metrics
 	metrics.DbRequests.WithLabelValues(command, codeString).Add(1)
 ```
 # Looking at what the Prometheus Server Scrapes
-If you were running your service locally a simple curl to the metrics endpoint will get you a text representation of the current metric observations (there is also a protobuf protocol that the prometheus server uses). For example ````curl http://localhost:8066/service/metrics` command ```. 
-Here is a small snippet of what that looks like. To demonstrate some additional metric types the go_memstats_gc_sys_bytes gauge and go_gc_duration_seconds summary metric are included. A summary defines quantiles instead of buckets. These go metrics are provided by the prometheus golang client.
+If you were running your service locally a simple curl to the metrics endpoint will get you a text representation of the current metric observations (there is also a protobuf protocol that the prometheus server uses). For example ```curl http://localhost:8066/service/metrics```.
+
+Here is a small snippet of what that looks like including some additional examples of go runtime metrics that are provided by the prometheus client API.
 ```
 # HELP db_requests_total How many database requests processed, partitioned by command
 # TYPE db_requests_total counter
