@@ -52,6 +52,24 @@ func TestLevels(t *testing.T) {
 	assert.Contains(t, s[2], `"level":"ERROR"`)
 }
 
+func TestMarshal(t *testing.T) {
+	logger := New("testlogger")
+	level := logger.Level()
+	data, err := level.MarshalText()
+	text := string(data)
+	assert.Equal(t, nil, err )
+	assert.Equal(t, "info", text)
+}
+
+func TestUnmarshal(t *testing.T) {
+	logger := New("testlogger")
+	logger.SetLevel(InfoLevel)
+	level := logger.Level()
+	err := level.UnmarshalText([]byte("debug"))
+	assert.Equal(t, nil, err )
+	assert.Equal(t, DebugLevel, level)
+}
+
 func TestDebugEnabled(t *testing.T) {
 	outC, w := StartLogCapturing()
 	logger := NewWithOutput("testlogger", w)

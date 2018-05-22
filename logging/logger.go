@@ -34,6 +34,17 @@ const (
 	UrlKey       = "url"
 )
 
+func (lvl *Level) MarshalText() (text []byte, err error) {
+	return zapcore.Level(*lvl).MarshalText()
+}
+
+func (lvl *Level) UnmarshalText(text []byte) error {
+	zapLvl := zapcore.Level(*lvl)
+	err := zapLvl.UnmarshalText(text)
+	*lvl = Level(zapLvl)
+	return err
+}
+
 var globalLogger *Logger
 
 // SetGlobalLobber sets the global logger
