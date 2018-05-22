@@ -59,6 +59,7 @@ func TestDebugEnabled(t *testing.T) {
 	logger.Debug("A debug log statement")
 	logger.Info("An info log statement")
 	s := StopLogCapturing(outC, w)
+	assert.Equal(t, logger.Level(), DebugLevel)
 	assert.Contains(t, s[0], "A debug log statement")
 	assert.Contains(t, s[1], "An info log statement")
 }
@@ -70,6 +71,7 @@ func TestDebugDisabled(t *testing.T) {
 	logger.Debug("A debug log statement")
 	logger.Info("An info log statement")
 	s := StopLogCapturing(outC, w)
+	assert.Equal(t, logger.Level(), InfoLevel)
 	assert.NotContains(t, s[0], "A debug log statement")
 	assert.Contains(t, s[0], "An info log statement")
 }
