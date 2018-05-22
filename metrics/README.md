@@ -28,8 +28,8 @@ import 	"github.com/prometheus/client_golang/prometheus"
 // NewGaugeVec defines a 'vector' of metrics. There are multiple because of the "host" label below. Each unique valeu for "host" will define a unique time series stream.
 var dbConnections = prometheus.NewGaugeVec(
     prometheus.GaugeOpts{
-        Name: "db_connections_active",
-        Help: "A count of active database connections",
+        Name: "db_connections_open",
+        Help: "A count of open database connections",
     },
     []string{"host", "database"},
 )
@@ -46,12 +46,11 @@ With the metric defined we can now instrument our runtime code to observe the me
 func getDB(host string, database string) *sql.DB {
      db := ensureConnected(host, database)
 
-     // Observe metrics
-     // First, get the gauge instance for the given host value. If this is the first time host has been seen then a new instance will be created. 
-     gauge := dbConnections.WithLabelValues(host, database)
-     // Next, set the current value. This is just a local memory operation.
-     count := float64(db.Stats().OpenConnections)
-     gauge.Set(count)
+     // Observe the metric for open connections
+     // First, get the gauge instance for the given host value. If this is the first time host has been seen then a new instance will be created.
+     // Next, set the current value. This is just a local memory operation.     
+     dbConnections.WithLabelValues(host, database)
+          .Set(float64(db.Stats().OpenConnections))
      
      return db
 }
@@ -63,10 +62,10 @@ As mentioned above, instrumenting an SSC service involves using both this packag
 ## Prometheus API Features
 * [Multi-dimensional data model](https://prometheus.io/docs/concepts/data_model/) where a single metric like "http_requests_total" can be dimensioned with multiple labels such as http method and status code.
 * Support for a rich set of [metric types](https://prometheus.io/docs/concepts/metric_types/)
-  ** Counter: A counter is a cumulative metric that represents a value that only ever goes up. Counters support automatic rate calculations such as http requests per second.
-  ** Gauge: A gauge is a metric that represents a value that can arbitrarily go up and down.
-  ** Histogram: A histogram is a metric that represents the distribution of a set of observations over a defined set of buckets. Histograms can be aggregated and are calculated in the prometheus server.
-  ** Summary: A summary is a metric that represents the distribution of a set of observations over a defined set of phi-quantiles over a sliding time window. Summaries can not be aggregated and are calculated in the service itself (not in the prometheus server).
+  * Counter: A counter is a cumulative metric that represents a value that only ever goes up. Counters support automatic rate calculations such as http requests per second.
+  * Gauge: A gauge is a metric that represents a value that can arbitrarily go up and down.
+  * Histogram: A histogram is a metric that represents the distribution of a set of observations over a defined set of buckets. Histograms can be aggregated and are calculated in the prometheus server.
+  * Summary: A summary is a metric that represents the distribution of a set of observations over a defined set of phi-quantiles over a sliding time window. Summaries can not be aggregated and are calculated in the service itself (not in the prometheus server).
 
 Read the [Prometheus Overview](https://prometheus.io/docs/introduction/overview/) for more details on the full prometheus system and its features.
 
@@ -125,8 +124,7 @@ var (
 )
 
 func Register() {
-	prometheus.MustRegister(DbRequests)
-	prometheus.MustRegister(DbRequestsDurationsHistogram)
+	prometheus.MustRegister(DbRequests, DbRequestsDurationsHistogram)
 }
 ```
 
