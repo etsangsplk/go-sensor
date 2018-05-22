@@ -34,10 +34,14 @@ const (
 	UrlKey       = "url"
 )
 
+// MarshalText marshals the level into its string representation and returns it as a byte array.
+// Text strings are one of the following: "debug", "info", "warn", "error", "fatal"
 func (lvl *Level) MarshalText() (text []byte, err error) {
 	return zapcore.Level(*lvl).MarshalText()
 }
 
+// UnmarshalText unmarshals a byte array representing a log string into a log level object and assigns it to the level.
+// Text strings must be one of the following: "debug", "info", "warn", "error", "fatal"
 func (lvl *Level) UnmarshalText(text []byte) error {
 	zapLvl := zapcore.Level(*lvl)
 	err := zapLvl.UnmarshalText(text)
