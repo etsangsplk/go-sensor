@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"errors"
 )
 
 func StartLogCapturing() (chan string, *os.File) {
@@ -68,6 +69,14 @@ func TestUnmarshal(t *testing.T) {
 	err := level.UnmarshalText([]byte("debug"))
 	assert.Equal(t, nil, err )
 	assert.Equal(t, DebugLevel, level)
+}
+
+func TestUnmarshalInvalidText(t *testing.T) {
+	logger := New("testlogger")
+	logger.SetLevel(InfoLevel)
+	level := logger.Level()
+	err := level.UnmarshalText([]byte("ebug"))
+	assert.Equal(t, errors.New("unrecognized level: \"ebug\""), err )
 }
 
 func TestDebugEnabled(t *testing.T) {
