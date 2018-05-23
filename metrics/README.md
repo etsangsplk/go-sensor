@@ -62,10 +62,10 @@ As mentioned above, instrumenting an SSC service involves using both this packag
 ## Prometheus API Features
 * [Multi-dimensional data model](https://prometheus.io/docs/concepts/data_model/) where a single metric like "http_requests_total" can be dimensioned with multiple labels such as http method and status code.
 * Support for a rich set of [metric types](https://prometheus.io/docs/concepts/metric_types/)
-  * Counter: A counter is a cumulative metric that represents a value that only ever goes up. Counters support automatic rate calculations such as http requests per second.
-  * Gauge: A gauge is a metric that represents a value that can arbitrarily go up and down.
-  * Histogram: A histogram is a metric that represents the distribution of a set of observations over a defined set of buckets. Histograms can be aggregated and are calculated in the prometheus server.
-  * Summary: A summary is a metric that represents the distribution of a set of observations over a defined set of phi-quantiles over a sliding time window. Summaries can not be aggregated and are calculated in the service itself (not in the prometheus server).
+  * __Counter__: A counter is a cumulative metric that represents a value that only ever goes up. Counters support automatic rate calculations such as http requests per second.
+  * __Gauge__: A gauge is a metric that represents a value that can arbitrarily go up and down.
+  * __Histogram__: A histogram is a metric that represents the distribution of a set of observations over a defined set of buckets. Histograms can be aggregated and are calculated in the prometheus server.
+  * __Summary__: A summary is a metric that represents the distribution of a set of observations over a defined set of phi-quantiles over a sliding time window. Summaries can not be aggregated and are calculated in the service itself (not in the prometheus server).
 
 Read the [Prometheus Overview](https://prometheus.io/docs/introduction/overview/) for more details on the full prometheus system and its features.
 
