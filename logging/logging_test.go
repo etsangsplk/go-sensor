@@ -97,6 +97,8 @@ func TestWith(t *testing.T) {
 	logger := NewWithOutput("testlogger", w)
 	logger = logger.With("arbitrary_key", "arbitrary_value")
 	logger.Info("An info log statement")
+	emptyFieldsLogger := logger.With()
+	assert.Equal(t, logger, emptyFieldsLogger)
 	s := StopLogCapturing(outC, w)
 	assert.Contains(t, s[0], "An info log statement")
 	assert.Contains(t, s[0], "\"arbitrary_key\":\"arbitrary_value\"")
