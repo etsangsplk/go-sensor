@@ -2,6 +2,7 @@ package logging
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,7 +21,10 @@ func StartLogCapturing() (chan string, *os.File) {
 	// copy the output in a separate goroutine so printing can't block indefinitely
 	go func() {
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, e := io.Copy(&buf, r)
+		if e != nil {
+			panic(e)
+		}
 		outC <- buf.String()
 	}()
 	return outC, w
@@ -28,7 +32,10 @@ func StartLogCapturing() (chan string, *os.File) {
 
 func StopLogCapturing(outChannel chan string, writeStream *os.File) []string {
 	// back to normal state
-	writeStream.Close()
+	if e := writeStream.Close(); e != nil {
+		panic(e)
+	}
+
 	logOutput := <-outChannel
 
 	// Verify call stack contains information we care about
@@ -99,9 +106,9 @@ func TestRequiredFields(t *testing.T) {
 func TestNewWithOuput(t *testing.T) {
 	outC, w := StartLogCapturing()
 	logger := NewWithOutput("testlogger", w)
-	ctxLogger := logger.With("hello", "world")
+	loggerWith := logger.With("hello", "world")
 	logger.Info("parent does not contain hello world")
-	ctxLogger.Info("child contains hello world")
+	loggerWith.Info("child contains hello world")
 	s := StopLogCapturing(outC, w)
 	assert.Contains(t, s[0], "parent does not contain hello world")
 	assert.NotContains(t, s[0], `"hello":"world"`)
@@ -113,21 +120,24 @@ func TestNoOp(t *testing.T) {
 	outC, w := StartLogCapturing()
 	// Since parent logger is NoOp, child is too
 	logger := NewNoOp()
-	ctxLogger := logger.With("hello", "world")
-	logger.Info("parent does not contain hello world")
-	ctxLogger.Info("child contains hello world")
+	childLogger := logger.With("hello", "world")
+	logger.Info("parent logger")
+	childLogger.Info("child logger")
 	s := StopLogCapturing(outC, w)
 	assert.Equal(t, []string{""}, s, "No lines should be emitted. ")
 }
 
 func TestHostname(t *testing.T) {
 	outC, w := StartLogCapturing()
-	os.Setenv("HOSTNAME", "testhostname")
+	hostname, e := os.Hostname()
+	if e != nil {
+		t.Fatal(e)
+	}
 	logger := NewWithOutput("testlogger", w)
 	logger.Info("An info log statement")
 	s := StopLogCapturing(outC, w)
 	assert.Contains(t, s[0], "An info log statement")
-	assert.Contains(t, s[0], `"hostname":"testhostname"`)
+	assert.Contains(t, s[0], fmt.Sprintf(`"hostname":"%s"`, hostname))
 }
 
 func TestFormatting(t *testing.T) {
@@ -135,7 +145,7 @@ func TestFormatting(t *testing.T) {
 	log.Info("Time duration", "duration", time.Second*5, "durationString", (time.Second * 5).String())
 }
 
-func TestlockWriter(t *testing.T) {
+func TestLockWriter(t *testing.T) {
 	s := lockWriter(os.Stdout)
 	assert.NotNil(t, s)
 	s = lockWriter(os.Stderr)
@@ -147,14 +157,20 @@ func TestlockWriter(t *testing.T) {
 	assert.NotNil(t, s)
 }
 
-func TestlockWriterToAFileStream(t *testing.T) {
+func TestLockWriterToAFileStream(t *testing.T) {
 	// Setup random log file and current timestamp as log string
 	// for easy verification.
 	name := fmt.Sprintf("%v-%v", os.Getpid(), time.Now().Second())
 	f, err := ioutil.TempFile("", name)
-	defer os.Remove(f.Name())
+	defer func() {
+		if e := os.Remove(f.Name()); e != nil {
+			t.Fatal(e)
+		}
+	}()
 	assert.NoError(t, err)
-	_, err = ioutil.ReadFile(f.Name())
+	if _, err = ioutil.ReadFile(f.Name()); err != nil {
+		t.Fatal(err)
+	}
 	log := NewWithOutput("testlogtempfile", f)
 	log.Info(fmt.Sprintf("you log message in file %v", name))
 	// Read file content for validation.
@@ -162,4 +178,22 @@ func TestlockWriterToAFileStream(t *testing.T) {
 	assert.NoError(t, err)
 	s := string(newContentsBytes[:])
 	assert.Contains(t, s, name)
+}
+
+func TestContext(t *testing.T) {
+	outC, w := StartLogCapturing()
+
+	logger := NewWithOutput("testContextLogger", w)
+	logger.Info("message0")
+	ctx := NewContext(context.Background(), logger, "field1", "value1")
+	From(ctx).Info("message1")
+	ctx = NewComponentContext(ctx, "component1", "field2", "value2")
+	From(ctx).Info("message2")
+
+	s := StopLogCapturing(outC, w)
+	assert.Contains(t, s[0], "message0")
+	assert.Contains(t, s[1], "message1")
+	assert.Contains(t, s[1], `"field1":"value1"`)
+	assert.Contains(t, s[2], `"field2":"value2"`)
+	assert.Contains(t, s[2], `"component":"component1"`)
 }

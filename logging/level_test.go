@@ -1,11 +1,12 @@
 package logging
 
 import (
+	"encoding/json"
+	"errors"
+	"strings"
 	"testing"
 
-	"errors"
 	"github.com/stretchr/testify/assert"
-	"strings"
 )
 
 type levelStringPairs struct {
@@ -50,7 +51,7 @@ func TestMarshal(t *testing.T) {
 	for _, v := range levelStrings {
 		data, err := v.Level.MarshalText()
 		text := string(data)
-		assert.Equal(t, nil, err)
+		assert.NoError(t, err)
 		assert.Equal(t, v.String, text)
 	}
 }
@@ -60,18 +61,29 @@ func TestUnmarshal(t *testing.T) {
 	for _, v := range levelStrings {
 		var level Level
 		err := level.UnmarshalText([]byte(strings.ToLower(v.String)))
-		assert.Equal(t, nil, err)
+		assert.NoError(t, err)
 		assert.Equal(t, v.Level, level)
 	}
 	// test with uppercase level strings
 	for _, v := range levelStrings {
 		var level Level
 		err := level.UnmarshalText([]byte(strings.ToUpper(v.String)))
-		assert.Equal(t, nil, err)
+		assert.NoError(t, err)
 		assert.Equal(t, v.Level, level)
 	}
 	// test with invalid
 	var level Level
 	err := level.UnmarshalText([]byte("something"))
 	assert.Equal(t, errors.New("unrecognized level: \"something\""), err)
+
+	// test unmarshalling into a struct from json
+	type Config struct {
+		LoggingLevel Level
+	}
+	var config = Config{LoggingLevel: InfoLevel}
+	configText := `{"LoggingLevel": "DEBUG"}`
+	if err := json.Unmarshal([]byte(configText), &config); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, DebugLevel, config.LoggingLevel)
 }

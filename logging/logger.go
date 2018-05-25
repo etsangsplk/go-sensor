@@ -15,6 +15,7 @@ const (
 	ComponentKey = "component"
 	ErrorKey     = "error"
 	FileKey      = "file"
+	HostnameKey  = "hostname"
 	LevelKey     = "level"
 	MessageKey   = "message"
 	RequestIdKey = "requestId"
@@ -24,14 +25,15 @@ const (
 	UrlKey       = "url"
 )
 
-var globalLogger *Logger
+var globalLogger = NewNoOp()
 
-// SetGlobalLobber sets the global logger
+// SetGlobalLogger sets the global logger
 func SetGlobalLogger(l *Logger) {
 	globalLogger = l
 }
 
-// Global returns the global logger
+// Global returns the global logger. The default logger
+// is a no-op logger.
 func Global() *Logger {
 	return globalLogger
 }
@@ -68,9 +70,10 @@ func NewWithOutput(serviceName string, writer io.Writer) *Logger {
 	atomLevel := zap.NewAtomicLevelAt(zapcore.InfoLevel)
 	stacktrace := zap.AddStacktrace(zap.FatalLevel)
 	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), lockWriter(writer), &atomLevel)
+	hostname, _ := os.Hostname()
 	requiredFields := zap.Fields(
-		zap.String("service", serviceName),
-		zap.String("hostname", os.Getenv("HOSTNAME")))
+		zap.String(ServiceKey, serviceName),
+		zap.String(HostnameKey, hostname))
 	logger := zap.New(core, requiredFields, stacktrace, zap.AddCaller(), zap.AddCallerSkip(1))
 	return &Logger{logger.Sugar(), &atomLevel}
 }
@@ -103,8 +106,8 @@ func (l *Logger) SetCallstackSkip(skip int) *Logger {
 }
 
 // Flush ensures that all buffered messages are written.
-func (l *Logger) Flush() {
-	l.sugared.Sync()
+func (l *Logger) Flush() error {
+	return l.sugared.Sync()
 }
 
 // Debug logs a message at DebugLevel
