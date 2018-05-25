@@ -71,6 +71,15 @@ func TestDebugEnabled(t *testing.T) {
 	assert.Contains(t, s[1], "An info log statement")
 }
 
+func TestEnabled(t *testing.T) {
+	logger := New("testlogger")
+	logger.SetLevel(DebugLevel)
+	assert.True(t, logger.DebugEnabled())
+	assert.True(t, logger.Enabled(DebugLevel))
+	logger.SetLevel(ErrorLevel)
+	assert.True(t, logger.Enabled(ErrorLevel))
+}
+
 func TestDebugDisabled(t *testing.T) {
 	outC, w := StartLogCapturing()
 	logger := NewWithOutput("testlogger", w)
