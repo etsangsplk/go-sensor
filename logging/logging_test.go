@@ -210,3 +210,12 @@ func TestContext(t *testing.T) {
 	assert.Contains(t, s[2], `"field2":"value2"`)
 	assert.Contains(t, s[2], `"component":"component1"`)
 }
+
+func TestGlobalLogger(t *testing.T) {
+	logger := New("testContextLogger")
+	globalLogger := Global()
+	SetGlobalLogger(logger)
+	assert.NotEqual(t, logger, globalLogger) // Before assigning the logger
+	globalLogger = Global()
+	assert.Equal(t, logger, globalLogger) // After assigning the logger
+}
