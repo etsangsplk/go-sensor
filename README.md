@@ -317,6 +317,24 @@ func TestCreateCollection(t *testing.T) {
 }
 ```
 
+## Parsing Levels from Strings
+This logger provides functions for producing log levels from their corresponding strings.
+Example:
+```go
+debugLevel, err := ParseLevel("debug")
+debugLevel, err := ParseLevel("DEBUG")
+```
+The Level implements the `fmt.Stringer` interface:
+```go
+var info string = logging.InfoLevel.String()
+```
+
+## Setting Log Level from a Config File
+Assuming you've already read and parsed your config file into a map or struct, you can set the level by simply using the ParseLevel() function as so:
+```go
+level := ParseLevel(config["log_level"])
+logger.SetLevel(level)
+```
 ## Migrating from Logrus
 In Logrus, we might do something like:
 ```go

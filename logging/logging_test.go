@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"errors"
 )
 
 func StartLogCapturing() (chan string, *os.File) {
@@ -51,32 +50,6 @@ func TestLevels(t *testing.T) {
 	assert.Contains(t, s[0], `"level":"INFO"`)
 	assert.Contains(t, s[1], `"level":"WARN"`)
 	assert.Contains(t, s[2], `"level":"ERROR"`)
-}
-
-func TestMarshal(t *testing.T) {
-	logger := New("testlogger")
-	level := logger.Level()
-	data, err := level.MarshalText()
-	text := string(data)
-	assert.Equal(t, nil, err )
-	assert.Equal(t, "info", text)
-}
-
-func TestUnmarshal(t *testing.T) {
-	logger := New("testlogger")
-	logger.SetLevel(InfoLevel)
-	level := logger.Level()
-	err := level.UnmarshalText([]byte("debug"))
-	assert.Equal(t, nil, err )
-	assert.Equal(t, DebugLevel, level)
-}
-
-func TestUnmarshalInvalidText(t *testing.T) {
-	logger := New("testlogger")
-	logger.SetLevel(InfoLevel)
-	level := logger.Level()
-	err := level.UnmarshalText([]byte("ebug"))
-	assert.Equal(t, errors.New("unrecognized level: \"ebug\""), err )
 }
 
 func TestDebugEnabled(t *testing.T) {
@@ -136,16 +109,15 @@ func TestNewWithOuput(t *testing.T) {
 	assert.Contains(t, s[1], `"hello":"world"`)
 }
 
-
 func TestNoOp(t *testing.T) {
-    outC, w := StartLogCapturing()
-    // Since parent logger is NoOp, child is too
-    logger := NewNoOp()
-    ctxLogger := logger.With("hello", "world")
-    logger.Info("parent does not contain hello world")
-    ctxLogger.Info("child contains hello world")
-    s := StopLogCapturing(outC, w)
-    assert.Equal(t, []string{""}, s, "No lines should be emitted. ")
+	outC, w := StartLogCapturing()
+	// Since parent logger is NoOp, child is too
+	logger := NewNoOp()
+	ctxLogger := logger.With("hello", "world")
+	logger.Info("parent does not contain hello world")
+	ctxLogger.Info("child contains hello world")
+	s := StopLogCapturing(outC, w)
+	assert.Equal(t, []string{""}, s, "No lines should be emitted. ")
 }
 
 func TestHostname(t *testing.T) {
