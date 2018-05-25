@@ -54,8 +54,8 @@ This is how you instantiate a new logger for your service:
 log := logging.New("service1")
 log.Info("Service starting")
 
-// Set it to be the global logger so that adding a log statement doesn't
-// require flowing it through all intermediate functions.
+// Set the service logger as the global logger. This makes the service logger globally available
+// instead of flowing it through as a parameter. By default the global logger is the no-op logger.
 logging.SetGlobalLogger(log)
 
 // Elsewhere in the service...
@@ -297,12 +297,19 @@ func reapTempCollections(ctx context.Context) {
         // code elided...you get the picture by now
 }
 ```
+As a convenience the NewComponentContext function (and other new context functions) take a variadic fields parameter.
+If supplied the logger in the new context will be first extended with these fields via a call to logging.With().
+```go
+ctx := logging.NewComponentContext(context.Background(), "indexer", "shardID", shardID, "batchID", batchID)
+```
 
 ## Unit Tests
 Your unit tests will need to be updated to flow in ctx to all the runtime functions that now require it. logging.NewTestContext() can help create that context. Furthermore early-adopters will note that there is no default global logger (for now). You can use TestMain() to set the global logger.
 
 ```go
 func TestMain(m *testing.M) {
+        // By default the global logger is a no-op logger. If you want logging for your test runs
+        // then optionally set a global logger in TestMain()
 	logging.SetGlobalLogger(logging.New("unit-test"))
 	// Run the tests
 	os.Exit(m.Run())
@@ -317,6 +324,35 @@ func TestCreateCollection(t *testing.T) {
 }
 ```
 
+## Parsing Levels from Strings
+Log levels can be converted to and from their text representation
+Example:
+```go
+debugLevel, err := ParseLevel("debug")
+debugLevel, err := ParseLevel("DEBUG")
+
+// Level implements the `fmt.Stringer` interface:
+var info string = logging.InfoLevel.String()
+
+// Level implements the encoding.MarshalText and encoding.UnmarshalText interfaces. 
+// This enables reading in levels from structured formats like json and yaml.
+type Config struct {
+	LoggingLevel Level
+}
+var config Config
+configText := `{"LoggingLevel": "DEBUG"}`
+if err := json.Unmarshal([]byte(configText), &config); err != nil {
+	log.Fatal(err, "Error loading config")
+}
+
+```
+
+## Setting Log Level from a Config File
+Assuming you've already read and parsed your config file into a map or struct, you can set the level by simply using the ParseLevel() function as so:
+```go
+level := ParseLevel(config["log_level"])
+logger.SetLevel(level)
+```
 ## Migrating from Logrus
 In Logrus, we might do something like:
 ```go

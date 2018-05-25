@@ -9,22 +9,13 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type Level zapcore.Level
-
-const (
-	DebugLevel = Level(zapcore.DebugLevel)
-	InfoLevel  = Level(zapcore.InfoLevel)
-	WarnLevel  = Level(zapcore.WarnLevel)
-	ErrorLevel = Level(zapcore.ErrorLevel)
-	FatalLevel = Level(zapcore.FatalLevel)
-)
-
 // Constants for standard field key names
 const (
 	CallstackKey = "callstack"
 	ComponentKey = "component"
 	ErrorKey     = "error"
 	FileKey      = "file"
+	HostnameKey  = "hostname"
 	LevelKey     = "level"
 	MessageKey   = "message"
 	RequestIdKey = "requestId"
@@ -34,29 +25,15 @@ const (
 	UrlKey       = "url"
 )
 
-// MarshalText marshals the level into its string representation and returns it as a byte array.
-// Text strings are one of the following: "debug", "info", "warn", "error", "fatal"
-func (lvl *Level) MarshalText() (text []byte, err error) {
-	return zapcore.Level(*lvl).MarshalText()
-}
+var globalLogger = NewNoOp()
 
-// UnmarshalText unmarshals a byte array representing a log string into a log level object and assigns it to the level.
-// Text strings must be one of the following: "debug", "info", "warn", "error", "fatal"
-func (lvl *Level) UnmarshalText(text []byte) error {
-	zapLvl := zapcore.Level(*lvl)
-	err := zapLvl.UnmarshalText(text)
-	*lvl = Level(zapLvl)
-	return err
-}
-
-var globalLogger *Logger
-
-// SetGlobalLobber sets the global logger
+// SetGlobalLogger sets the global logger
 func SetGlobalLogger(l *Logger) {
 	globalLogger = l
 }
 
-// Global returns the global logger
+// Global returns the global logger. The default logger
+// is a no-op logger.
 func Global() *Logger {
 	return globalLogger
 }
@@ -93,9 +70,10 @@ func NewWithOutput(serviceName string, writer io.Writer) *Logger {
 	atomLevel := zap.NewAtomicLevelAt(zapcore.InfoLevel)
 	stacktrace := zap.AddStacktrace(zap.FatalLevel)
 	core := zapcore.NewCore(zapcore.NewJSONEncoder(encoderCfg), lockWriter(writer), &atomLevel)
+	hostname, _ := os.Hostname()
 	requiredFields := zap.Fields(
-		zap.String("service", serviceName),
-		zap.String("hostname", os.Getenv("HOSTNAME")))
+		zap.String(ServiceKey, serviceName),
+		zap.String(HostnameKey, hostname))
 	logger := zap.New(core, requiredFields, stacktrace, zap.AddCaller(), zap.AddCallerSkip(1))
 	return &Logger{logger.Sugar(), &atomLevel}
 }
@@ -128,8 +106,8 @@ func (l *Logger) SetCallstackSkip(skip int) *Logger {
 }
 
 // Flush ensures that all buffered messages are written.
-func (l *Logger) Flush() {
-	l.sugared.Sync()
+func (l *Logger) Flush() error {
+	return l.sugared.Sync()
 }
 
 // Debug logs a message at DebugLevel
