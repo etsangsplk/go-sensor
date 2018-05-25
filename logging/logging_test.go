@@ -154,8 +154,10 @@ func TestHostname(t *testing.T) {
 }
 
 func TestFormatting(t *testing.T) {
-	log := New("testLogger")
-	log.Info("Time duration", "duration", time.Second*5, "durationString", (time.Second * 5).String())
+	outC, w := StartLogCapturing()
+	logger := NewWithOutput("testContextLogger", w)
+	logger.Info("Time duration", "duration", time.Second*5, "durationString", (time.Second * 5).String())
+	StopLogCapturing(outC, w)
 }
 
 func TestLockWriter(t *testing.T) {
