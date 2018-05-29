@@ -49,9 +49,6 @@ func NewRequestContext(ctx context.Context, requestID string, fields ...interfac
 		requestID = bson.NewObjectId().Hex()
 	}
 	logger := From(ctx)
-	if logger == nil {
-		return nil
-	}
 	logger = logger.With(RequestIdKey, requestID)
 	return NewContext(ctx, logger, fields...)
 }
@@ -63,9 +60,6 @@ func NewRequestContext(ctx context.Context, requestID string, fields ...interfac
 // logger will be first extended with those fields via logger.With().
 func NewComponentContext(ctx context.Context, component string, fields ...interface{}) context.Context {
 	logger := From(ctx)
-	if logger == nil {
-		return nil
-	}
 	logger = logger.With(ComponentKey, component)
 	return NewContext(ctx, logger, fields...)
 }
