@@ -17,6 +17,10 @@ func TestContext(t *testing.T) {
 	ctx = NewComponentContext(ctx, "component1", "field2", "value2")
 	From(ctx).Info("message2")
 
+	// Test with empty logger
+	nilCtx := NewContext(ctx, nil)
+	nilLogger := From(nilCtx)
+	assert.Equal(t, Global(), nilLogger)
 
 	s := StopLogCapturing(outC, w)
 	assert.Contains(t, s[0], "message0")
