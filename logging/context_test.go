@@ -30,3 +30,14 @@ func TestContext(t *testing.T) {
 	assert.Contains(t, s[2], `"component":"component1"`)
 }
 
+func TestNewRequestContext(t *testing.T) {
+	outC, w := StartLogCapturing()
+	logger := NewWithOutput("testContextLogger", w)
+	ctx := NewContext(context.Background(), logger, "field1", "value1")
+	newCtx := NewRequestContext(ctx,"")
+	newLogger := From(newCtx)
+	newLogger.Info("message0")
+	s := StopLogCapturing(outC, w)
+	assert.Contains(t, s[0], "message0")
+	assert.Contains(t, s[0], "requestId")
+}
