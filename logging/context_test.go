@@ -41,3 +41,9 @@ func TestNewRequestContext(t *testing.T) {
 	assert.Contains(t, s[0], "message0")
 	assert.Contains(t, s[0], "requestId")
 }
+
+func TestNewTestContext(t *testing.T) {
+	ctx := NewTestContext("TestNewTestContext")
+	l := ctx.Value(loggerContextKey).(*Logger)
+	assert.NotNil(t, l)
+}
