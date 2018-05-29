@@ -18,7 +18,8 @@ const (
 // logger is returned. For example if you pass context.Background() then
 // you will get back the global logger. From will panic if ctx is nil.
 func From(ctx context.Context) *Logger {
-	if l, ok := ctx.Value(loggerContextKey).(*Logger); ok {
+	l := ctx.Value(loggerContextKey).(*Logger)
+	if l != nil {
 		return l
 	}
 	return Global()
