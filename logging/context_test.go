@@ -34,7 +34,7 @@ func TestNewRequestContext(t *testing.T) {
 	outC, w := StartLogCapturing()
 	logger := NewWithOutput("testContextLogger", w)
 	ctx := NewContext(context.Background(), logger, "field1", "value1")
-	newCtx := NewRequestContext(ctx,"")
+	newCtx := NewRequestContext(ctx, "")
 	newLogger := From(newCtx)
 	newLogger.Info("message0")
 	s := StopLogCapturing(outC, w)
