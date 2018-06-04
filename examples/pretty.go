@@ -42,23 +42,30 @@ func main(){
 	}
 }
 
-func extractAndRemove(m map[string]interface{}, key string) string {
-	value := m[key].(string)
-	delete(m, key)
-	return value
+func extractAndRemove(m map[string]interface{}, key string) (string, bool) {
+	if v, ok := m[key]; ok {
+		value := v.(string)
+		delete(m, key)
+		return value, true
+	} else {
+		log.Warnf("Missing the required key '%s'.", key)
+		return "", false
+	}
 }
 
 func printLine(entry map[string]interface{}) {
-	level := extractAndRemove(entry, "level")
-	timestamp := extractAndRemove(entry, "time")
-	file := extractAndRemove(entry, "file")
-	message := extractAndRemove(entry, "message")
+	level,_ := extractAndRemove(entry, "level")
+	timestamp, timestampExists:= extractAndRemove(entry, "time")
+	file, _ := extractAndRemove(entry, "file")
+	message, _ := extractAndRemove(entry, "message")
 
-	parsedTime, err := time.Parse(time.RFC3339, timestamp)
-	if err != nil {
-		log.Fatal("Can't parse timestamp: " + fmt.Sprintf("%v", timestamp))
+	if timestampExists {
+		parsedTime, err := time.Parse(time.RFC3339, timestamp)
+		if err != nil {
+			log.Fatal("Can't parse timestamp: " + fmt.Sprintf("%v", timestamp))
+		}
+		timestamp = parsedTime.Format("0102 15:04:05.999")
 	}
-	timestamp = parsedTime.Format("0102 15:04:05.999")
 
 	var theRest []string
 
