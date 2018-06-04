@@ -42,15 +42,17 @@ func main(){
 	}
 }
 
+func extractAndRemove(m map[string]interface{}, key string) string {
+	value := m[key].(string)
+	delete(m, key)
+	return value
+}
+
 func printLine(entry map[string]interface{}) {
-	level := entry["level"].(string)
-	delete(entry, "level")
-	timestamp := entry["time"].(string)
-	delete(entry, "time")
-	file := entry["file"].(string)
-	delete(entry, "file")
-	message := entry["message"].(string)
-	delete(entry, "message")
+	level := extractAndRemove(entry, "level")
+	timestamp := extractAndRemove(entry, "time")
+	file := extractAndRemove(entry, "file")
+	message := extractAndRemove(entry, "message")
 
 	parsedTime, err := time.Parse(time.RFC3339, timestamp)
 	if err != nil {
@@ -72,6 +74,7 @@ func printLine(entry map[string]interface{}) {
 	}
 	theRestStr := strings.Join(theRest, " ")
 	switch level = fmt.Sprintf("%-5s",level);level {
+	
 	case "WARN":
 		level = colorize(yellow, level)
 	case "ERROR":
