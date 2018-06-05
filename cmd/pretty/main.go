@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/common/log"
 	"flag"
 	"io"
+	"sort"
 )
 
 const (
@@ -106,6 +107,7 @@ func printLine(entry map[string]interface{}) {
 		}
 		theRest = append(theRest, keyValue)
 	}
+	sort.Strings(theRest)
 	theRestStr := strings.Join(theRest, " ")
 	switch level = fmt.Sprintf("%-5s",level);level {
 	
