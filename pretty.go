@@ -97,14 +97,14 @@ func printLine(entry map[string]interface{}) {
 	var theRest []string
 
 	for key, value := range entry {
-		var keyvalue string
+		var keyValue string
 		// quote the value if necessary
 		if strings.Contains(fmt.Sprintf("%v",value), " "){
-			keyvalue = fmt.Sprintf("%s=\"%s\"", key, value)
+			keyValue = fmt.Sprintf("%s=\"%s\"", key, value)
 		} else {
-			keyvalue = fmt.Sprintf("%s=%s", key, value)
+			keyValue = fmt.Sprintf("%s=%s", key, value)
 		}
-		theRest = append(theRest, keyvalue)
+		theRest = append(theRest, keyValue)
 	}
 	theRestStr := strings.Join(theRest, " ")
 	switch level = fmt.Sprintf("%-5s",level);level {
