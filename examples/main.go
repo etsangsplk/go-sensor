@@ -14,7 +14,6 @@ func main() {
 	ExampleGlobalLogger()
 	ExampleServiceRequestLogger()
 	ExampleNonHttpRequest()
-	// ExampleFluent()
 }
 
 // The global logger is used for code paths that do not have a Context, for
@@ -138,38 +137,3 @@ func ExampleNonHttpRequest() {
 	ctx := logging.NewRequestContext(context.Background(), requestId)
 	logging.From(ctx).Info("New batch started")
 }
-
-/*
-// This example demonstrates a fluent-api and contrasts it to the flat style
-func ExampleFluent() {
-	err := fmt.Errorf("An error")
-	name, url := "name1", "http://github.com"
-	value := 10
-
-	log := logging.New("service1")
-
-	//
-	// The fluent style provides typing and structure but requires a call to .Flush() at the end.
-	// A linting tool could be written to detect missing calls to Flush().
-	// Vertically formatting can be used for long runs
-	// Note how golang errors are handled in the fluent and flat styles
-	//
-	log.Infow("A fluent example").Str("name", name).Int("value", value).Url(url).Flush()
-
-	log.Infow("A fluent example").
-		Str("name", name).
-		Int("value", value).
-		Url(url).
-		Flush()
-
-	log.Errorw(err, "A fluent example").Str("name", name).Int("value", value).Url(url).Flush()
-
-	//
-	// Flat style shown here for comparison
-	// Standard keys like "url" are a bit more tedious in the flat style
-	//
-	log.Info("A flat example", "name", name, "value", value)
-	log.Info("A flat example", "name", name, "value", value, logging.UrlKey, url)
-	log.Error(err, "A flat example", "name", name, "value", value, logging.UrlKey, url)
-}
-*/

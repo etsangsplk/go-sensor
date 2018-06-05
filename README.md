@@ -1,4 +1,4 @@
-# Package logging [[ ![Codeship Status for splunk/ssc-observation](https://app.codeship.com/projects/f6131db0-3764-0136-f72e-36b905590d28/status?branch=master)](https://app.codeship.com/projects/289654)
+# Package logging [ ![Codeship Status for splunk/ssc-observation](https://app.codeship.com/projects/f6131db0-3764-0136-f72e-36b905590d28/status?branch=master)](https://app.codeship.com/projects/289654)
 
 The logging package provides a standard for golang SSC services to instrument their services according to the [SSC Logging Standard](https://confluence.splunk.com/display/PROD/ERD%3A+Shared+Logging) format. Features include structured leveled logging, request loggers, component loggers, and http access tracing. This logging package wraps a more complicated logging package (zap) and exposes just the APIs needed to instrument your service according to the SSC standard.
 
@@ -36,6 +36,17 @@ Forthcoming features not yet implemented:
   * Tenant context in request tracing
   * HTTP access tracing (errors, sampled non-errors)
 
+## Proper API Usage
+Here is a list of common conventions to follow:
+1) Capitalize the first letter in a message, do not end with punctuation.
+2) Make 'ctx context.Context' the first parameter and name the parameter 'ctx'.
+3) Pass ctx not logger instances as function parameters, context is more general and can more useful capabilities beyond loggers.
+4) log.With() is for creating a new child logger that is a clone of the parent. Do not mistake this for a fluent-style API, never do log.With().Info().
+5) log.Warn() calls should be rare or non-existent, most should either be Info() or Error().
+6) Request contexts should typically flow as function parameters, only store a request context on an instance if the instance is request-scoped. It is more common to store a component context on an instance.
+7) Be judicious in logging in a shared library, consider returning an error with richer context instead and letting the containing service decide what to log, or providing a callback interface with the information to log (as Swagger does).
+8) Objects can be logged out as fields (as long as they are JSON marshalable), but avoid tracing objects that are more than one level deep, likewise for arrays.
+
 ## Basic Usage
 This is how you instantiate a new logger for your service:
 ```go
@@ -43,8 +54,8 @@ This is how you instantiate a new logger for your service:
 log := logging.New("service1")
 log.Info("Service starting")
 
-// Set it to be the global logger so that adding a log statement doesn't
-// require flowing it through all intermediate functions.
+// Set the service logger as the global logger. This makes the service logger globally available
+// instead of flowing it through as a parameter. By default the global logger is the no-op logger.
 logging.SetGlobalLogger(log)
 
 // Elsewhere in the service...
@@ -286,13 +297,22 @@ func reapTempCollections(ctx context.Context) {
         // code elided...you get the picture by now
 }
 ```
+As a convenience the NewComponentContext function (and other new context functions) take a variadic fields parameter.
+If supplied the logger in the new context will be first extended with these fields via a call to logging.With().
+```go
+ctx := logging.NewComponentContext(context.Background(), "indexer", "shardID", shardID, "batchID", batchID)
+```
 
 ## Unit Tests
 Your unit tests will need to be updated to flow in ctx to all the runtime functions that now require it. logging.NewTestContext() can help create that context. Furthermore early-adopters will note that there is no default global logger (for now). You can use TestMain() to set the global logger.
 
 ```go
 func TestMain(m *testing.M) {
+        // By default the global logger is a no-op logger. If you want logging for your test runs
+        // then optionally set a global logger in TestMain()
 	logging.SetGlobalLogger(logging.New("unit-test"))
+	// Run the tests
+	os.Exit(m.Run())
 }
 
 func TestCreateCollection(t *testing.T) {
@@ -304,6 +324,35 @@ func TestCreateCollection(t *testing.T) {
 }
 ```
 
+## Parsing Levels from Strings
+Log levels can be converted to and from their text representation
+Example:
+```go
+debugLevel, err := ParseLevel("debug")
+debugLevel, err := ParseLevel("DEBUG")
+
+// Level implements the `fmt.Stringer` interface:
+var info string = logging.InfoLevel.String()
+
+// Level implements the encoding.MarshalText and encoding.UnmarshalText interfaces. 
+// This enables reading in levels from structured formats like json and yaml.
+type Config struct {
+	LoggingLevel Level
+}
+var config Config
+configText := `{"LoggingLevel": "DEBUG"}`
+if err := json.Unmarshal([]byte(configText), &config); err != nil {
+	log.Fatal(err, "Error loading config")
+}
+
+```
+
+## Setting Log Level from a Config File
+Assuming you've already read and parsed your config file into a map or struct, you can set the level by simply using the ParseLevel() function as so:
+```go
+level := ParseLevel(config["log_level"])
+logger.SetLevel(level)
+```
 ## Migrating from Logrus
 In Logrus, we might do something like:
 ```go
