@@ -1,3 +1,6 @@
 vendor
 coverage.out
 .idea
+**/*.log
+**/main
+**/pretty
