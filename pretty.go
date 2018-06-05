@@ -24,6 +24,11 @@ const (
 type prettyPrinter func(entry map[string]interface{})
 
 func main(){
+	var CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flag.Usage = func() {
+		fmt.Fprintf(CommandLine.Output(), "Usage: %v [OPTION]... [LOGFILE]\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.Parse()
     args := flag.Args()
 
@@ -43,7 +48,7 @@ func main(){
 			}
 			processLines(bufio.NewReader(file), printLine)
 		default:
-			println("Usage:\nssc-observation [LOGFILE]")
+			flag.Usage()
 		}
 	} else {
 		// piped input
