@@ -1,12 +1,14 @@
 # Package metrics
 
-SSC services are primarily instrumented with metrics using the [Prometheus client APIs](https://godoc.org/github.com/prometheus/client_golang/prometheus). The ssc-observation/metrics package provides additional common components such as http middleware. Instrumenting a service with metrics enables monitoring, alerting, troubleshooting and service capacity planning scenarios. 
+SSC services are primarily instrumented with metrics using the [Prometheus client APIs](https://godoc.org/github.com/prometheus/client_golang/prometheus). The ssc-observation/metrics package provides additional common components such as http middleware. Instrumenting a service with metrics enables monitoring, alerting, troubleshooting and service capacity planning scenarios.
+
+At this time, metrics should not be used for usage meters for billing. The recommended approach for usage meters is still under investigation.
+
+## Support
+For help, join the ssc-observation slack channel or contact ychristensen@splunk.com.
 
 ## Architecture
-
 A more in depth architecture document that covers both metrics and alerts is available at [here](https://docs.google.com/document/d/11AlcILE3S_7XE5t3hgUAYSJCsosbFbzGQW2VALcz-hU/edit).
-
-Send feedback to ychristensen@splunk.com
 
 ## Concepts
 Metrics instrumentation enables observability of a service by externalizing measurements taken inside the service into a time series of numeric data.
