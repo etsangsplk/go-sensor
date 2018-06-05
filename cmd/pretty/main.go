@@ -117,7 +117,7 @@ func printLine(entry map[string]interface{}) {
 		level = colorize(green, level)
 	}
 
-	fmt.Printf("%s %s %-20s | \"%s\" %s \n", timestamp, level, file, message, theRestStr)
+	fmt.Printf("%-17s %5s %-22s | \"%s\" %s\n", timestamp, level, file, message, theRestStr)
 }
 
 func colorize(color int, str string) string{
