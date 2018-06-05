@@ -1,25 +1,35 @@
 # Package metrics
 
-SSC services use this metrics package combined with the [Prometheus client APIs](https://godoc.org/github.com/prometheus/client_golang/prometheus) to externalize their metrics. This instrumentation can enable monitoring, alerting, troubleshooting and service capacity planning scenarios. These packages should not be used for scenarios requiring durable, reliable delivery such as metering for billing or contractual SLA (scenarios directly involving $$).
+SSC services are primarily instrumented with metrics using the [Prometheus client APIs](https://godoc.org/github.com/prometheus/client_golang/prometheus). The ssc-observation/metrics package provides additional common components such as http middleware. Instrumenting a service with metrics enables monitoring, alerting, troubleshooting and service capacity planning scenarios. 
 
-## Status
-__WORK IN PROGRESS - PROPOSAL__
+## Architecture
 
-This document proposes an API for metrics instrumentation of SSC Services written in Golang. Send feedback to ychristensen@splunk.com
+A more in depth architecture document that covers both metrics and alerts is available at [here](https://docs.google.com/document/d/11AlcILE3S_7XE5t3hgUAYSJCsosbFbzGQW2VALcz-hU/edit).
+
+Send feedback to ychristensen@splunk.com
 
 ## Concepts
-Metrics instrumentation enables observability of a service by externalizing key measurements taken inside the service into a time series of numeric data.
- 
-The core concepts are:
-* __Metric__: A time series of numeric values to be observed. The different metrics types gauge, counter, histogram and summary each have unique capabilities.
-* __Metric Dimensions__: Dimensions (labels) partition the metric data into different pivots. For example an http request may be partitioned by http method values (“GET”, “POST”, ...) and status code values (500, 200, 429, ...). 
-* __Metrics Server__: The server that provides metrics ingest, storage and query. A metrics server exploits special characteristics of time series data to optimize all of these features.
-* __Instrumented Service__: The service that is instrumented with both custom and standard metrics. For example, the KV Store Service.
+Metrics instrumentation enables observability of a service by externalizing measurements taken inside the service into a time series of numeric data.
 
-Metric dimensions (also called labels) are a powerfully important capability. Dimensions enable the operations engineer analyze the broader and narrower slices of the metrics data. Using query aggregation functions you can analyze different dimensions of the data without having to declare new metrics in the code for each pivot. For example, http request rates for all http POST requests, or all GET requests that were throttled (status=429), or simply all http requests across all service replicas.
+* __Multi-dimensional data model__: A [model](https://prometheus.io/docs/concepts/data_model/) where a single metric like "http_requests_total" can be labelled with multiple dimensions such as http method, operation ID and status code. Queries can use aggregations to drill out, and filters to drill in or a combination (e.g., all POST operations with status code 5XX, or just listCollections operation with status code 429 (a throttling error)).
+* Support for a rich set of [metric types](https://prometheus.io/docs/concepts/metric_types/)
+  * __Counter__: A counter is a cumulative metric that represents a value that only ever goes up. Counters support automatic rate calculations such as http requests per second.
+  * __Gauge__: A gauge is a metric that represents a value that can arbitrarily go up and down.
+  * __Histogram__: A histogram is a metric that represents the distribution of a set of observations over a defined set of buckets. Histograms can be aggregated and are calculated in the prometheus server.
+  * __Summary__: A summary is a metric that represents the distribution of a set of observations over a defined set of phi-quantiles over a sliding time window. Summaries can not be aggregated and are calculated in the service itself (not in the prometheus server).
+* __ssc-observation__: Common library repository with APIs and middleware for use by SSC services for service instrumentation. Contains the packages metrics, tracing and logging. The tracing package provides functionality that is related to tracing, such as extracting the tenant ID and making it available, creating a request ID, and so on. The metrics and logging libraries make use of some of the functionality provided by the tracing package.
+* __Metrics Middleware__: Common library code that provides consistent metrics on http requests and serves up the metrics endpoint through simple configuration.
+* __Metrics Endpoint__: Prometheus uses a pull-based model and each service must publish a metrics endpoint (provided via common library middleware). 
+
+Read the [Prometheus Overview](https://prometheus.io/docs/introduction/overview/) for more details on the full prometheus system and its features.
+
+Read the [Histograms and Summaries](https://prometheus.io/docs/practices/histograms/) page for a more in depth discussion of those metrics.
+
+Counter, Gauge, and Histogram will be the most common metric types used. Summary has unique capabilities but can’t be aggregated (for example if you want to combine data across different replicas).
+
 
 ## Basic Usage
-This example demonstrates 1) defining a metric with labels (dimensions) and 2) externalizing (observing) the metric values to the metrics server. It defines a simple gauge metric to monitor the number of open database connections. Gauge is the right metric type to choose since open connections is a value that can increase and decrease. 
+Let’s start with a basic example of instrumenting a service with a single metric. In this case the metric is a measure of the number of open database connections dimensioned by database server host and database name. Since this value can increase and decrease over time the gauge is the chosen metric type. As a side note, database metrics like this will be defined in a common database library, but each service will have its own custom metrics as well.
 
 The first step is to define the metric and register it. When defining a metric you typically define the labels that will be used to 'dimension' the data into different time series streams. In this case we have two labels for 'host' and 'database' so that we can monitor the number of open connections to each unique host and database. If we wanted to later get a count of connections across all hosts or databases we could simply use an aggregation function at query time.
 ```go
@@ -56,33 +66,27 @@ func getDB(host string, database string) *sql.DB {
 }
 ```
 
+In addition to defining the metric and observing the values each service must serve a /metrics endpoint and make their service discoverable by the Prometheus Server. Promethues uses a pull based model to scrape metrics from each service on a configured interval. Those topics are covered later.
+
+
 # Features of the Metrics APIs
 As mentioned above, instrumenting an SSC service involves using both this package and the Prometheus client APIs. The metrics package provides largely supporting capability.
 
 ## Prometheus API Features
-* [Multi-dimensional data model](https://prometheus.io/docs/concepts/data_model/) where a single metric like "http_requests_total" can be dimensioned with multiple labels such as http method and status code.
-* Support for a rich set of [metric types](https://prometheus.io/docs/concepts/metric_types/)
-  * __Counter__: A counter is a cumulative metric that represents a value that only ever goes up. Counters support automatic rate calculations such as http requests per second.
-  * __Gauge__: A gauge is a metric that represents a value that can arbitrarily go up and down.
-  * __Histogram__: A histogram is a metric that represents the distribution of a set of observations over a defined set of buckets. Histograms can be aggregated and are calculated in the prometheus server.
-  * __Summary__: A summary is a metric that represents the distribution of a set of observations over a defined set of phi-quantiles over a sliding time window. Summaries can not be aggregated and are calculated in the service itself (not in the prometheus server).
-
-Read the [Prometheus Overview](https://prometheus.io/docs/introduction/overview/) for more details on the full prometheus system and its features.
-
-Read the [Histograms and Summaries](https://prometheus.io/docs/practices/histograms/) page for a more in depth discussion of those metrics.
-
-Counter, Gauge, and Histogram will be the most common metric types used. Summary has unique capabilities but can’t be aggregated (for example if you want to combine data across different replicas).
+* API for defining new metrics and their dimensions (labels)
+* API to register defined metrics for exposition to the Prometheus Server
+* API to observe data values
 
 ## SSC Metrics API Features
-* Pre-defined middleware handler for emitting http metrics.
+* Pre-defined middleware handler that services up the metrics endpoint
 * Metrics configuration and operational support
 * Possibly, a facility for pushing service metrics to non-Prometheus targets such as splunk.
 * Possibly, customizations of the local prometheus registry that all metrics must be registered with
 
 Note that other shared libraries such as the IAC client library will define and publish their own metrics.
 
-# Defining Custom Metrics
-Defining a metric involves choosing the metric type, defining the metric name, and the labels (if any) that will be used to dimension the observations. If one or more labels are defined then you will declare a vector of metrics like CounterVec. A metrics vector is a collector of a bundle of metrics. The bundle exists because each unique set of metric name and key-value pairs observed at runtime will define a new time series. For example, for the labels “method” and “statusCode” on the metric “http_requests_total” you might get three time series:
+# Understanding Metrics Dimensions
+Metrics dimensions are a powerful capability and provided necessary to drill-in and out on metrics data without changing service code. When defining a metric with labels you actually define a metrics vector like CounterVec. A metrics vector is a collector of a bundle of metrics. The bundle exists because each unique set of metric name and key-value pairs observed at runtime will define a new time series. For example, for the labels “method” and “statusCode” on the metric “http_requests_total” you might get three time series:
 * {"http_requests_total", "method", "POST", "statusCode", "200"}
 * {"http_requests_total", "method", "POST", "statusCode", "500"}
 * {"http_requests_total", "method", "GET", "statusCode", "200"}
@@ -90,13 +94,18 @@ Defining a metric involves choosing the metric type, defining the metric name, a
 A new time series will be created when new values "GET" and "429" are later observed.
 * {"http_requests_total", "method", "GET", "statusCode", "429"}
 
-From the perspective of the service instrumentation this all happens behind the scenes. 
+From the perspective of the service instrumentation this all happens behind the scenes.
+
+One must be careful to understand the cardinality of the dimensions used. Something like user id will certainly have too many unique values. Bounded values like http status codes or operation ids are fine. TenantID is still TBD but will likely be allowed initially until we better understand the implications.
+
+# Defining Custom Metrics
+Defining a metric involves choosing the metric type, defining the metric name, and the labels (if any) that will be used to dimension the observations.
 
 Defining histograms and services requires additional configuration. For histograms you must define the buckets that the observations will be collected in. The default [prometheus.DefBuckets](https://godoc.org/github.com/prometheus/client_golang/prometheus#pkg-variables) provides a good starting point for network service request latencies.  Similarly summaries have more complex configuration as well, see [SummaryOpts](https://godoc.org/github.com/prometheus/client_golang/prometheus#SummaryOpts).
 
 Once defined each metric must be registered once with the prometheus registry.
 
-By convention, the custom service metrics are defined in a service package called 'metrics'. The service should call metrics.Register() from the service main.
+By convention, the custom service metrics are defined in a service package in your service repository called 'metrics'. The service should call metrics.Register() from the service main.
 
 ```go
 package metrics
@@ -108,10 +117,10 @@ import (
 var (
 	DbRequests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "db_requests_total",
-			Help: "How many database requests processed, partitioned by command and code",
+			Name: "db_requests_bytes",
+			Help: "Count of bytes transferred to and from the database, partitioned by command and direction",
 		},
-		[]string{"command", "code"},
+		[]string{"command", "direction"},
 	)
 	DbRequestsDurationsHistogram = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -216,6 +225,8 @@ func setupGlobalMiddleware(handler http.Handler) http.Handler {
 }
 ```
 
+__NOTE__: The metrics library is not yet available (as of 6/4/2018) but should be very soon.
+
 # Prometheus Labels
 Prometheus will add additional labels to the time series stream for the metric job, group and the host. The metric group is defined in the prometheus server configuration and will typically have values like "production", "staging", or "development". The job defines a scraping configuration which includes the location of the endpoints to scrape. And finally the host is simply the hostname of the target server scraped.
 
@@ -223,4 +234,29 @@ For example, when viewed in the prometheus web console you will see all of the l
 ```
 db_requests_total{code="0",command="none",group="production",instance="localhost:8066",job="prometheus_production1"}
 ```
+
+# Metrics Endpoint Discovery
+The Prometheus Server running in the kubernetes cluster can automatically discover which pods have a metrics endpoint. This is done by annotating the service's kubernetes metadata with the port and path. Note that the port is the pod port, not the service port.
+
+For example see the .withAnnotationsmixin() call below:
+```
+local service = kService
+  // select on the same labels as defined in the container
+  .new(name, podLabel)
+  .withPorts(servicePort)
+  .withType(params.type)
+  // add SSC metadata to service resource
+  + utils.metadata(kService.mixin, metadata)
+  + kService.mixin.metadata.withAnnotationsMixin({"prometheus.io/port": "8066", "prometheus.io/path": "/service/metrics"});
+```
+
+In YAML this looks like:
+```
+ Metadata:
+  Annotations:
+    prometheus.io/port: 8066
+    prometheus.io/path: /service/metrics
+```
+
+
 
