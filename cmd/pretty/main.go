@@ -100,9 +100,9 @@ func printLine(entry map[string]interface{}) {
 		var keyValue string
 		// quote the value if necessary
 		if strings.Contains(fmt.Sprintf("%v",value), " "){
-			keyValue = fmt.Sprintf("%s=\"%s\"", key, value)
+			keyValue = fmt.Sprintf("%s=\"%v\"", key, value)
 		} else {
-			keyValue = fmt.Sprintf("%s=%s", key, value)
+			keyValue = fmt.Sprintf("%s=%v", key, value)
 		}
 		theRest = append(theRest, keyValue)
 	}
