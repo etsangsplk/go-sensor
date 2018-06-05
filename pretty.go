@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 	"github.com/prometheus/common/log"
+	"flag"
+	"io"
 )
 
 const (
@@ -20,25 +22,43 @@ const (
 )
 
 func main(){
+	flag.Parse()
+    args := flag.Args()
+
 	fi, err := os.Stdin.Stat()
 	if err != nil {
 		panic(err)
 	}
 	if fi.Mode() & os.ModeNamedPipe == 0 {
 		// No piped input
-		println("No piped input")
+		switch len(args) {
+		case 1:
+			filename := args[0]
+			file, err := os.Open(filename)
+			defer file.Close()
+			if err != nil {
+				log.Error(err)
+			}
+			processLines(bufio.NewReader(file))
+		default:
+			println("Usage:\nssc-observation [LOGFILE]")
+		}
 	} else {
 		// piped input
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			line := scanner.Text()
-			var entry map[string]interface{}
-			json.Unmarshal([]byte(line), &entry)
-			printLine(entry)
-		}
-		if err := scanner.Err(); err != nil {
-			fmt.Fprintln(os.Stderr, "reading standard input:", err)
-		}
+		processLines(os.Stdin)
+	}
+}
+
+func processLines(r io.Reader){
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := scanner.Text()
+		var entry map[string]interface{}
+		json.Unmarshal([]byte(line), &entry)
+		printLine(entry)
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, "reading standard input:", err)
 	}
 }
 
