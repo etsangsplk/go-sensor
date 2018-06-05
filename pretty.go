@@ -21,6 +21,8 @@ const (
 	gray    = 37
 )
 
+type prettyPrinter func(entry map[string]interface{})
+
 func main(){
 	flag.Parse()
     args := flag.Args()
@@ -39,23 +41,23 @@ func main(){
 			if err != nil {
 				log.Error(err)
 			}
-			processLines(bufio.NewReader(file))
+			processLines(bufio.NewReader(file), printLine)
 		default:
 			println("Usage:\nssc-observation [LOGFILE]")
 		}
 	} else {
 		// piped input
-		processLines(os.Stdin)
+		processLines(os.Stdin, printLine)
 	}
 }
 
-func processLines(r io.Reader){
+func processLines(r io.Reader, print prettyPrinter){
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		var entry map[string]interface{}
 		json.Unmarshal([]byte(line), &entry)
-		printLine(entry)
+		print(entry)
 	}
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintln(os.Stderr, "reading standard input:", err)
