@@ -189,45 +189,25 @@ go_gc_duration_seconds_count 64
 go_memstats_gc_sys_bytes 708608
 ```
 
-# Emitting Standard HTTP Metrics
-The SSC metrics package defines middleware that can be used to observe http metrics in a standard way. Http request rates, latency distributions, and active http request counts are all supported. These metrics are all dimensioned on http method, operation name, and response status code. In a swagger-generated service the operation name is derived from the API operation.ID, in non-swagger services the operation name is derived from context.
+# HTTP Middleware
+The metrics package provides middleware for serving up the Prometheus metrics endpoint and observing standard http metrics.
 
-Note, as shown below, only authorized, routed will have metrics observed. (open issue: do we want to observe unauthorized or unroutable requests separately (say to avoid skewing latency distributions) or if its ok to group all the 4XX type requests (user error) together. Either way, all request should be observed in some metric.)
+See the [ssc-observation README](https://github.com/splunk/ssc-observation) for details on how to configure the middleware pipeline.
 
-This example demonstrates how to enable standard http metrics using the metrics package middleware and metrics definitions.
+Additionally the http metrics must be registered. To accomplish this:
 ```go
 import (
-      "github.com/splunk/kvstore-service/kvstore/metrics"
-      sscmetrics "github.com/splunk/ssc-observation/metrics" // TODO: revisit this naming conflict
+      kvmetrics "github.com/splunk/kvstore-service/kvstore/metrics"
+      cmetrics "github.com/splunk/ssc-observation/metrics" 
 )
 
 func configureAPI(api *operations.KVStoreAPI) http.Handler {
         // Register http metrics
-        sscmetrics.Register()
+        metrics.Register()
         // Register custom service metrics
-	metrics.Register()
-}
-
-func setupMiddlewares(handler http.Handler) http.Handler {
-        // Add the metrics middleware to the http pipeline
-	return sscmetrics.NewHttpMetricsHandler(handler)
+	kvmetrics.Register()
 }
 ```
-# Registering the Metrics Endpoint
-Prometheus uses a pull based model to periodically scrape metrics from each monitored service. Each service must expose a metrics endpoint which for SSC will be '/service/metrics'. The metrics library provides middleware for serving up this endpoint and can be registered as follows.
-
-```go
-// The middleware configuration happens before anything, this middleware also applies to serving the swagger.json document.
-// So this is a good place to plug in a panic handling middleware, logging and metrics
-func setupGlobalMiddleware(handler http.Handler) http.Handler {
-	return handlers.NewPanicHandler(
-		handlers.NewPrometheusHandler(
-			logging.NewRequestHandler(logging.Global(),
-				handlers.NewRateLimitHandler(handler))))
-}
-```
-
-__NOTE__: The metrics library is not yet available (as of 6/4/2018) but should be very soon.
 
 # Prometheus Labels
 Prometheus will add additional labels to the time series stream for the metric job, group and the host. The metric group is defined in the prometheus server configuration and will typically have values like "production", "staging", or "development". The job defines a scraping configuration which includes the location of the endpoints to scrape. And finally the host is simply the hostname of the target server scraped.
@@ -260,5 +240,14 @@ In YAML this looks like:
     prometheus.io/path: /service/metrics
 ```
 
+# Prometheus Dashboard
+Once your service is deployed in the kubernetes environment you can use the (very basic) Prometheus Dashboard to check if your service was properly discovered and metrics are getting observed. This is not the dashboarding solution that will be used in production but is useful for quick validation. You can also run the prometheus server locally without much effort (see the prometheus documention).
+
+The URL is environment URL prefixed with 'prometheus.'. For example, https://prometheus.playground1.dev.us-west-2.splunk8s.io.
+
+Here is an example query that shows container CPU usage for kvstore.
+```
+sum (rate (container_cpu_usage_seconds_total{image!="",namespace="kvstore",pod_name=~"kvservice.*"}[1m])) by (pod_name,namespace)
+```
 
 

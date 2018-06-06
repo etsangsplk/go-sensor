@@ -108,7 +108,7 @@ func serviceMain(hostPort string, wg *sync.WaitGroup) {
 
 	// Wrap operation1Handler with the request logging handler that will set up
 	// request context tracing.
-	operation1Handler = logging.NewRequestHandler(logging.Global(), operation1Handler)
+	operation1Handler = logging.NewRequestLoggerHandler(logging.Global(), operation1Handler)
 	http.Handle("/operation1", operation1Handler)
 
 	err = http.Serve(listener, nil)
