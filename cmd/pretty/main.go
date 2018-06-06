@@ -76,7 +76,6 @@ func extractAndRemove(m map[string]interface{}, key string) (string, bool) {
 		delete(m, key)
 		return value, true
 	} else {
-		log.Warnf("Missing the required key '%s'.", key)
 		return "", false
 	}
 }
@@ -86,6 +85,11 @@ func printLine(entry map[string]interface{}) {
 	timestamp, timestampExists:= extractAndRemove(entry, "time")
 	file, _ := extractAndRemove(entry, "file")
 	message, _ := extractAndRemove(entry, "message")
+	callstack, callstackExists := extractAndRemove(entry, "callstack")
+
+	if callstackExists {
+		callstack = fmt.Sprintf("callstack=\n%s", callstack)
+	}
 
 	if timestampExists {
 		parsedTime, err := time.Parse(time.RFC3339, timestamp)
@@ -109,17 +113,19 @@ func printLine(entry map[string]interface{}) {
 	}
 	sort.Strings(theRest)
 	theRestStr := strings.Join(theRest, " ")
-	switch level = fmt.Sprintf("%-5s",level);level {
-	
+	level = fmt.Sprintf("%-5s",level) // Have to pad it before colorization
+	switch strings.ToUpper(level) {
 	case "WARN":
 		level = colorize(yellow, level)
 	case "ERROR":
+		level = colorize(red, level)
+	case "FATAL":
 		level = colorize(red, level)
 	default:
 		level = colorize(green, level)
 	}
 
-	fmt.Printf("%-17s %5s %-22s | \"%s\" %s\n", timestamp, level, file, message, theRestStr)
+	fmt.Printf("%-17s %5s %-22s | \"%s\" %s %s\n", timestamp, level, file, message, theRestStr, callstack)
 }
 
 func colorize(color int, str string) string{
