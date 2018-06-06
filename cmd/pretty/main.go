@@ -25,6 +25,7 @@ const (
 type prettyPrinter func(entry map[string]interface{})
 
 func main(){
+	var excludeField = flag.String("x", "", "Excludes the field which matches the key.")
 	var CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flag.Usage = func() {
 		fmt.Fprintf(CommandLine.Output(), "Usage: %v [OPTION]... [LOGFILE]\n", os.Args[0])
@@ -47,22 +48,25 @@ func main(){
 			if err != nil {
 				log.Error(err)
 			}
-			processLines(bufio.NewReader(file), printLine)
+			processLines(bufio.NewReader(file), printLine, excludeField)
 		default:
 			flag.Usage()
 		}
 	} else {
 		// piped input
-		processLines(os.Stdin, printLine)
+		processLines(os.Stdin, printLine, excludeField)
 	}
 }
 
-func processLines(r io.Reader, print prettyPrinter){
+func processLines(r io.Reader, print prettyPrinter, excludeField *string){
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		var entry map[string]interface{}
 		json.Unmarshal([]byte(line), &entry)
+		if _, ok := entry[*excludeField]; ok {
+			delete(entry, *excludeField)
+		}
 		print(entry)
 	}
 	if err := scanner.Err(); err != nil {
