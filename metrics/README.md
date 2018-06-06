@@ -29,6 +29,10 @@ Read the [Histograms and Summaries](https://prometheus.io/docs/practices/histogr
 
 Counter, Gauge, and Histogram will be the most common metric types used. Summary has unique capabilities but can’t be aggregated (for example if you want to combine data across different replicas).
 
+## Non-Golang Services
+Prometheus has client libraries for golang, java, scala and python. Non-golang services are recommended to use these libraries. For components instrumented with dropwizard we are working on enabling this.
+
+Options for C++ support (possibly backporting a 3rd party package) are still under investigation.
 
 ## Basic Usage
 Let’s start with a basic example of instrumenting a service with a single metric. In this case the metric is a measure of the number of open database connections dimensioned by database server host and database name. Since this value can increase and decrease over time the gauge is the chosen metric type. As a side note, database metrics like this will be defined in a common database library, but each service will have its own custom metrics as well.
@@ -198,13 +202,13 @@ Additionally the http metrics must be registered. To accomplish this:
 ```go
 import (
       kvmetrics "github.com/splunk/kvstore-service/kvstore/metrics"
-      cmetrics "github.com/splunk/ssc-observation/metrics" 
+      metrics "github.com/splunk/ssc-observation/metrics" 
 )
 
 func configureAPI(api *operations.KVStoreAPI) http.Handler {
-        // Register http metrics
-        metrics.Register()
-        // Register custom service metrics
+	// Register http metrics
+	metrics.Register()
+	// Register custom service metrics
 	kvmetrics.Register()
 }
 ```
