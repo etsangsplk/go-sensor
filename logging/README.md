@@ -192,7 +192,7 @@ If you are not using Swagger then you will have your own calls to http.Handle() 
 First you may want to modify your routing to inject an operation id into the request context. Use tracing.WithOperationID() to do that.
 
 
-As with the Swagger case, the logging.NewRequestContextHandler() API is used to add a request logging handler into your services http handler processing pipeline. This handler will create a new logger for each http request that will trace the request id. This logger is added to the http request context.
+As with the Swagger case, the logging.NewRequestLoggerHandler() API is used to add a request logging handler into your services http handler processing pipeline. This handler will create a new logger for each http request that will trace the request id. This logger is added to the http request context.
 ```go
 // In your service middleware wire in the logging request handler...
 
@@ -202,7 +202,7 @@ handler = http.HandlerFunc(operation1HandlerFunc)
 
 // Wrap operation1Handler with the request logging handler that will set up
 // request context tracing. Use the global logger as the parent for each request logger.
-handler = logging.NewRequestContextHandler(logging.Global(), handler)
+handler = logging.NewRequestLoggerHandler(logging.Global(), handler)
 http.Handle("/operation1", handler)
 ```
 
