@@ -14,6 +14,7 @@ import (
 * Built over [zap](https://godoc.org/go.uber.org/zap) to provide low allocation, high performance logging
 * Context request tracing with provided middleware handlers
 * Child loggers including 'component loggers' (channel loggers)
+* Comes with a human-friendly CLI formatting tool
 
 Forthcoming features not yet implemented:
 * Level set/get that is shared across a chain of loggers (parent-child), and the ability to isolate a logger's level setting from others (like atomic levels in zap)
@@ -21,7 +22,6 @@ Forthcoming features not yet implemented:
 * Logger sampling: add support to emit a set sampling of traces (for example, 1% of http 200 requests)
 * Distributed tracing: integrate [opentracing-go](https://github.com/opentracing/opentracing-go)
 * Logging administration: remotely set logging levels on registered loggers
-* A separate dev tool for humanizing logs
 * More middleware HTTP handlers and middleware features:
   * Support for X-DEBUG-TRACE http header to enable debug tracing for that request
 
@@ -370,6 +370,64 @@ Below is an example of what the logging output from the KVStore service.
 1. Issue: I wrapped this library's log functions and now `file` does not show the correct file. `"file":"myservice/myloggerwrapper.go:81"`
 Solution: When you initialize your logger, you can specify a callstack skip. Example: `logger := logging.New("kvstore").SetCallstackSkip(-1)`
 This works on child loggers too.
+
+
+## Pretty: the SCC Log Humanizing Tool
+This library comes with a tool which parses the json and outputs a format that should be easier for humans scan visually for development purposes.
+
+### Example
+`pretty` will turn this:
+```json
+{"level":"INFO","time":"2018-06-06T22:35:14.075Z","file":"examples/main.go:31","message":"Service starting","service":"service1","hostname":"djenkins-cx1"}
+{"level":"DEBUG","time":"2018-06-06T22:35:14.075Z","file":"examples/main.go:42","message":"message2","service":"service1","hostname":"djenkins-cx1"}
+{"level":"INFO","time":"2018-06-06T22:35:14.076Z","file":"examples/main.go:127","message":"Executing operation1","service":"service1","hostname":"djenkins-cx1","requestId":"5b1861a2e8321e42486f80c4","param1":"value1"}
+{"level":"ERROR","time":"2018-06-06T22:35:14.076Z","file":"examples/main.go:131","message":"Bad request","service":"service1","hostname":"djenkins-cx1","requestId":"5b1861a2e8321e42486f80c4","param1":"value1","error":"Bad value for param1"}
+```
+into this:
+```
+0606 22:34:32.501 INFO  examples/main.go:31    | "Service starting" hostname=djenkins-cx1 service=service1
+0606 22:34:32.501 DEBUG examples/main.go:42    | "message2" hostname=djenkins-cx1 service=service1
+0606 22:34:32.502 INFO  examples/main.go:127   | "Executing operation1" hostname=djenkins-cx1 param1=value1 requestId=5b186178e8321e40b13d67f4 service=service1
+0606 22:34:32.502 ERROR examples/main.go:131   | "Bad request" error="Bad value for param1" hostname=djenkins-cx1 param1=value1 requestId=5b186178e8321e40b13d67f4 service=service1
+```
+
+### Installation
+```bash
+go get github.com/splunk/ssc-observation/cmd/pretty
+```
+This should install the command `pretty` in `$GOPATH/bin/pretty`.
+
+### Usage
+This tool supports reading from a file or stdin so you can pipe directly from kubectl.
+#### With stdin
+```bash
+kubectl logs -f | pretty
+```
+#### With file
+```bash
+pretty myapp.log
+```
+#### Other Piping Examples
+`pretty` can also be used with other common GNU CLI tools like `grep`. Say you just don't want to see WARN statements for some reason...
+```bash
+kubectl logs -f | pretty | grep -v WARN
+```
+or maybe you only want to see ERROR statements:
+```bash
+kubectl logs -f | pretty | grep ERROR
+```
+
+#### JQ + Pretty
+[jq](https://stedolan.github.io/jq/) is an incredibly powerful tool for manipulating json and can used in conjunction with `pretty`. Let's say you want to remove several key-values from your log statements:
+```bash
+kubectl logs -f | jq 'del(.hostname) | del(.service)' | pretty
+```
+This will have removed "hostname" and "service" from your `pretty` output.
+
+If we wanted to print only error statements as we did up above with grep, we could do that more elegantly with jq:
+```bash
+kubectl logs -f | jq 'select(.level == "ERROR")' | pretty
+```
 
 ## License
 Copyright 2018, Splunk. All Rights Reserved.
