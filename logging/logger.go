@@ -14,15 +14,18 @@ const (
 	CallstackKey = "callstack"
 	ComponentKey = "component"
 	ErrorKey     = "error"
-	FileKey      = "file"
+	FileKey      = "location" // TODO: remove during breaking changes (now LocationKey)
 	HostnameKey  = "hostname"
 	LevelKey     = "level"
+	LocationKey  = "location"
 	MessageKey   = "message"
-	RequestIdKey = "requestId"
+	RequestIdKey = "requestId" // TODO: remove during breaking changes
+	RequestIDKey = "requestId"
 	ServiceKey   = "service"
 	TimeKey      = "time"
 	TenantKey    = "tenant"
-	UrlKey       = "url"
+	UrlKey       = "url" // TODO: remove during breaking changes
+	URLKey       = "url"
 )
 
 var globalLogger = NewNoOp()
