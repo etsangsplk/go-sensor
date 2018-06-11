@@ -9,13 +9,12 @@ The metrics package provides only http middleware for metrics instrumentation. S
 The tracing package provides http middleware and context APIs for enriching the http request context with common instrumentation values like tenant id, request id and operation id. The context APIs can be used directly as an extensibility point to enrich http request context in custom ways for use by metrics and logging package handlers. Since services use a variety of request routing approaches there is no standard middleware for setting the operation id context. See the example below for how to do this with open-api (swagger) based services
 
 # Documentation and Support
-[Logging README](https://github.com/splunk/ssc-observation/tree/master/logging)
 
-[Metrics README](https://github.com/splunk/ssc-observation/tree/master/metrics)
-
-[Prometheus Client API](https://godoc.org/github.com/prometheus/client_golang/prometheus)
-
-[Metrics Architecture](https://docs.google.com/document/d/11AlcILE3S_7XE5t3hgUAYSJCsosbFbzGQW2VALcz-hU/edit?usp=sharing)
+- [Alerts](./alerts/README.md)
+- [Logging](./logging/README.md)
+- [Metrics](./metrics/README.md)
+- [Prometheus Client API](https://godoc.org/github.com/prometheus/client_golang/prometheus)
+- [Metrics Architecture](https://docs.google.com/document/d/11AlcILE3S_7XE5t3hgUAYSJCsosbFbzGQW2VALcz-hU/edit?usp=sharing)
 
 Inspecting the ssc-observation code itself is also a great resource and most of the public APIs are well documented.
 
@@ -97,8 +96,7 @@ func (h *operationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 ```
 
 ## Metrics Endpoint Discovery
-In addition to instrumenting your service with metrics you also need to make it discoverable by the Prometheus Server running in the kubernetes environment. Read the (Metrics Endpoint Discovery section)[https://github.com/splunk/ssc-observation/metrics#metrics-endpoint-discovery] for more details.
+In addition to instrumenting your service with metrics you also need to make it discoverable by the Prometheus Server running in the kubernetes environment. Read the [Metrics Endpoint Discovery section](./metrics/README.md#metrics-endpoint-discovery) for more details.
 
-metrics#metrics-endpoint-discovery
 ## License
 Copyright 2018, Splunk. All Rights Reserved.
