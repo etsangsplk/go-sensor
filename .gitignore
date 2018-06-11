@@ -3,4 +3,4 @@ coverage.out
 .idea
 **/*.log
 **/main
-**/pretty
+**/pplog

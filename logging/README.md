@@ -372,11 +372,11 @@ Solution: When you initialize your logger, you can specify a callstack skip. Exa
 This works on child loggers too.
 
 
-## Pretty: the SCC Log Humanizing Tool
+## PPLOG: the SCC Log Humanizing Tool
 This library comes with a tool which parses the json and outputs a format that should be easier for humans scan visually for development purposes.
 
 ### Example
-`pretty` will turn this:
+`pplog` will turn this:
 ```json
 {"level":"INFO","time":"2018-06-06T22:35:14.075Z","file":"examples/main.go:31","message":"Service starting","service":"service1","hostname":"djenkins-cx1"}
 {"level":"DEBUG","time":"2018-06-06T22:35:14.075Z","file":"examples/main.go:42","message":"message2","service":"service1","hostname":"djenkins-cx1"}
@@ -393,40 +393,40 @@ into this:
 
 ### Installation
 ```bash
-go get github.com/splunk/ssc-observation/cmd/pretty
+go get github.com/splunk/ssc-observation/cmd/pplog
 ```
-This should install the command `pretty` in `$GOPATH/bin/pretty`.
+This should install the command `pplog` in `$GOPATH/bin/pplog`.
 
 ### Usage
 This tool supports reading from a file or stdin so you can pipe directly from kubectl.
 #### With stdin
 ```bash
-kubectl logs -f | pretty
+kubectl logs -f | pplog
 ```
 #### With file
 ```bash
-pretty myapp.log
+pplog myapp.log
 ```
 #### Other Piping Examples
-`pretty` can also be used with other common GNU CLI tools like `grep`. Say you just don't want to see WARN statements for some reason...
+`pplog` can also be used with other common GNU CLI tools like `grep`. Say you just don't want to see WARN statements for some reason...
 ```bash
-kubectl logs -f | pretty | grep -v WARN
+kubectl logs -f | pplog | grep -v WARN
 ```
 or maybe you only want to see ERROR statements:
 ```bash
-kubectl logs -f | pretty | grep ERROR
+kubectl logs -f | pplog | grep ERROR
 ```
 
-#### JQ + Pretty
-[jq](https://stedolan.github.io/jq/) is an incredibly powerful tool for manipulating json and can used in conjunction with `pretty`. Let's say you want to remove several key-values from your log statements:
+#### JQ + PPLOG
+[jq](https://stedolan.github.io/jq/) is an incredibly powerful tool for manipulating json and can used in conjunction with `pplog`. Let's say you want to remove several key-values from your log statements:
 ```bash
-kubectl logs -f | jq 'del(.hostname) | del(.service)' | pretty
+kubectl logs -f | jq 'del(.hostname) | del(.service)' | pplog
 ```
-This will have removed "hostname" and "service" from your `pretty` output.
+This will have removed "hostname" and "service" from your `pplog` output.
 
 If we wanted to print only error statements as we did up above with grep, we could do that more elegantly with jq:
 ```bash
-kubectl logs -f | jq 'select(.level == "ERROR")' | pretty
+kubectl logs -f | jq 'select(.level == "ERROR")' | pplog
 ```
 
 ## License
