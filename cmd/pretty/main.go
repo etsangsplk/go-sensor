@@ -46,7 +46,7 @@ func main() {
 			file, err := os.Open(filename)
 			defer file.Close()
 			if err != nil {
-				log.Error(err)
+				log.Fatal(err)
 			}
 			processLines(bufio.NewReader(file), printLine, excludeField)
 		default:
