@@ -25,11 +25,17 @@ const (
 type prettyPrinter func(entry map[string]interface{})
 
 func main() {
-	var excludeField = flag.String("x", "", "Excludes the field which matches the key.")
 	var CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flag.Usage = func() {
 		fmt.Fprintf(CommandLine.Output(), "Usage: %v [OPTION]... [LOGFILE]\n", os.Args[0])
 		flag.PrintDefaults()
+		fmt.Printf("\nJQ: https://stedolan.github.io/jq/\n"+
+			"\tjq is great! You can use it to transform json streams.\n\n"+
+			"\tHere's an example of how you can exclude the hostname and service fields:\n"+
+			"\t\tcat myapp.log | jq 'del(.hostname) | del(.service)' | %s\n"+
+			"\tHere's an example of filtering for events that match a specific field:\n"+
+			"\t\tcat myapp.log | jq 'select(.level == \"ERROR\")' | %s\n",
+			os.Args[0], os.Args[0])
 	}
 	flag.Parse()
 	args := flag.Args()
@@ -48,25 +54,22 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			processLines(bufio.NewReader(file), printLine, excludeField)
+			processLines(bufio.NewReader(file), printLine)
 		default:
 			flag.Usage()
 		}
 	} else {
 		// piped input
-		processLines(os.Stdin, printLine, excludeField)
+		processLines(os.Stdin, printLine)
 	}
 }
 
-func processLines(r io.Reader, print prettyPrinter, excludeField *string) {
+func processLines(r io.Reader, print prettyPrinter) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		var entry map[string]interface{}
 		json.Unmarshal([]byte(line), &entry)
-		if _, ok := entry[*excludeField]; ok {
-			delete(entry, *excludeField)
-		}
 		print(entry)
 	}
 	if err := scanner.Err(); err != nil {
