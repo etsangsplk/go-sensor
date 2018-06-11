@@ -121,9 +121,7 @@ func printLine(entry map[string]interface{}) {
 	switch strings.ToUpper(level) {
 	case "WARN":
 		level = colorize(yellow, level)
-	case "ERROR":
-		level = colorize(red, level)
-	case "FATAL":
+	case "ERROR", "FATAL":
 		level = colorize(red, level)
 	default:
 		level = colorize(green, level)
