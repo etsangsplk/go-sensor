@@ -45,6 +45,35 @@ Here the important parts to note are:
 
 **Reference:** See [upstream docs][alerts] for more details
 
+## Development
+
+During local development the part you'll need to iterate on is the
+[promql] query itself. The easiest way to do this is to paste the
+query into the Prometheus [graph] interface. Because the query itself
+contains all input required for testing you can quickly determine if
+it would fire right now, or if it would have fired in the past.
+
+For example here's a query the `kvstore` service might use to see if
+the `95th` quantile latency is above `0.4` seconds and for how long:
+
+![iterate](iterate.png)
+
+By testing the query with real data we can see it's behavior.
+
+**A few points to call out:**
+
+- The alert would have occured `4` times during this period
+- The alert would have only transitioned from `pending` to `firing`
+  once (assuming a `10m` duration)
+- The other three would have resolved prior to their `for` duration
+  and thus routing would only have occured for the first one
+
+You can also pretty easily run Prometheus locally and test using data
+on your computer. There are crude docs on how to do that
+[here](https://git.splunk.com/projects/KUB/repos/k8s-demo/browse/static/index.md),
+search for "*Prometheus (local) installation*". If this becomes a common
+pattern we can work to make this better/easier.
+
 ## Deployment
 
 Because [alerts] are configured via [crd] in our configuration, you
@@ -72,9 +101,7 @@ metadata:
 - `kind` This is a `PrometheusRule` [crd] object
 - `name` This is the name of your service. This ultimately gets
   suffixed with `.rules` and written to disk.
-- `labels`: Required for registration. In time we will likely have
-  more than one prometheus shard running, and you'll specify which one
-  to use via the `metadata.prometheus` label.
+- `labels`: Required for registration.
 
 ### Example: kubectl
 
@@ -117,7 +144,7 @@ kubectl apply -f kubectl/alerts.yaml
 
 Within a couple of minutes you'll find your new alerts deployed to
 which ever cluster you deployed to. The intention would be to run this
-via your CICD pipeline. You can also deploy this locally via Minikube.
+via your CICD pipeline.
 
 ### Example: jsonnet
 
@@ -170,13 +197,13 @@ k.core.v1.list.new([alerts])
 Then you'd do a show and deploy via:
 
 ```
-ks show minikube -c alerts
-ks apply minikube -c alerts
+ks show env -c alerts
+ks apply env -c alerts
 ```
 
 Within a couple of minutes you'll find your new alerts deployed to
 which ever cluster you deployed to. The intention would be to run this
-via your CICD pipeline. You can also deploy this locally via Minikube.
+via your CICD pipeline.
 
 ## Visibility in AWS
 
@@ -200,6 +227,7 @@ Once deployed to a cluster you can view your alerts via the
 [alerts]: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
 [crd]: https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/
 [design]: https://docs.google.com/document/d/1V5pSP_b3Q7j79-IByr1_p77LRcjGHszkUu0lO09Homs/edit?usp=sharing
+[graph]: https://prometheus.playground1.dev.us-west-2.splunk8s.io/graph
 [implementation]: https://github.com/coreos/prometheus-operator/pull/1333
 [prometheus]: https://prometheus.io/
 [prometheus operator]: https://github.com/coreos/prometheus-operator
