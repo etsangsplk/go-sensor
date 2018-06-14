@@ -3,15 +3,12 @@
 In SSC [Prometheus][prometheus] consumes [alerts] via Kubernetes
 [custom resource definitions][crd].
 
-> TLDR: See upstream for docs on [design] and [implementation] of the
-> [alert crd].
-
 ## Prometheus format
 
 [Prometheus][prometheus] describes alerts in a yaml format that looks
 like this:
 
-```
+```yaml
 groups:
 - name: example
   rules:
@@ -40,8 +37,11 @@ Here the important parts to note are:
        > Note: Currently routing configuration only **pages** with
        > `severity: critical`
 - `annotations`: These are typically used for:
-    1. `summary`: Concise summary of the state
-    1. `description`: A bit more verbose than `summary`
+    1. `summary`: Concise summary of the alert. This should be
+       descriptive of the problem but small enough to fit into a
+       mobile phone notification.
+    1. `description`: A bit more verbose than `summary` and should
+       give some sense of the issue as well as it's impact.
 
 **Reference:** See [upstream docs][alerts] for more details
 
@@ -86,7 +86,7 @@ itself. This means you can deploy using typical tools like:
 The [crd] design means we wrap the upstream format in an envelope for
 Kubernetes to consume. Here's the most important part:
 
-```
+```yaml
 kind: PrometheusRule
 apiVersion: monitoring.coreos.com/v1
 metadata:
@@ -108,7 +108,7 @@ metadata:
 If you wanted to deploy via kubectl you'd do something like this.
 Create a file in your repo named `kubectl/alerts.yaml`:
 
-```
+```yaml
 kind: PrometheusRule
 apiVersion: monitoring.coreos.com/v1
 metadata:
@@ -220,6 +220,13 @@ Once deployed to a cluster you can view your alerts via the
   the result would be the same logical alert specified duplicated by
   multiple namespaces.
 - This document does not describe how alerts get routed. TODO.
+
+## Configuration detail
+
+For anyone that's interested in how the configuration for this works,
+see upstream for docs on the [design] and [implementation] of the
+[alert crd].
+
 
 [//]: <> (References)
 
