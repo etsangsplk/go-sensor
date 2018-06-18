@@ -2,7 +2,6 @@ package logging
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -66,8 +65,18 @@ func TestDebugEnabled(t *testing.T) {
 	logger.Debug("A debug log statement")
 	logger.Info("An info log statement")
 	s := StopLogCapturing(outC, w)
+	assert.Equal(t, logger.Level(), DebugLevel)
 	assert.Contains(t, s[0], "A debug log statement")
 	assert.Contains(t, s[1], "An info log statement")
+}
+
+func TestEnabled(t *testing.T) {
+	logger := New("testlogger")
+	logger.SetLevel(DebugLevel)
+	assert.True(t, logger.DebugEnabled())
+	assert.True(t, logger.Enabled(DebugLevel))
+	logger.SetLevel(ErrorLevel)
+	assert.True(t, logger.Enabled(ErrorLevel))
 }
 
 func TestDebugDisabled(t *testing.T) {
@@ -77,6 +86,7 @@ func TestDebugDisabled(t *testing.T) {
 	logger.Debug("A debug log statement")
 	logger.Info("An info log statement")
 	s := StopLogCapturing(outC, w)
+	assert.Equal(t, logger.Level(), InfoLevel)
 	assert.NotContains(t, s[0], "A debug log statement")
 	assert.Contains(t, s[0], "An info log statement")
 }
@@ -86,6 +96,8 @@ func TestWith(t *testing.T) {
 	logger := NewWithOutput("testlogger", w)
 	logger = logger.With("arbitrary_key", "arbitrary_value")
 	logger.Info("An info log statement")
+	emptyFieldsLogger := logger.With()
+	assert.Equal(t, logger, emptyFieldsLogger)
 	s := StopLogCapturing(outC, w)
 	assert.Contains(t, s[0], "An info log statement")
 	assert.Contains(t, s[0], "\"arbitrary_key\":\"arbitrary_value\"")
@@ -140,11 +152,6 @@ func TestHostname(t *testing.T) {
 	assert.Contains(t, s[0], fmt.Sprintf(`"hostname":"%s"`, hostname))
 }
 
-func TestFormatting(t *testing.T) {
-	log := New("testLogger")
-	log.Info("Time duration", "duration", time.Second*5, "durationString", (time.Second * 5).String())
-}
-
 func TestLockWriter(t *testing.T) {
 	s := lockWriter(os.Stdout)
 	assert.NotNil(t, s)
@@ -180,20 +187,11 @@ func TestLockWriterToAFileStream(t *testing.T) {
 	assert.Contains(t, s, name)
 }
 
-func TestContext(t *testing.T) {
-	outC, w := StartLogCapturing()
-
-	logger := NewWithOutput("testContextLogger", w)
-	logger.Info("message0")
-	ctx := NewContext(context.Background(), logger, "field1", "value1")
-	From(ctx).Info("message1")
-	ctx = NewComponentContext(ctx, "component1", "field2", "value2")
-	From(ctx).Info("message2")
-
-	s := StopLogCapturing(outC, w)
-	assert.Contains(t, s[0], "message0")
-	assert.Contains(t, s[1], "message1")
-	assert.Contains(t, s[1], `"field1":"value1"`)
-	assert.Contains(t, s[2], `"field2":"value2"`)
-	assert.Contains(t, s[2], `"component":"component1"`)
+func TestGlobalLogger(t *testing.T) {
+	logger := New("testContextLogger")
+	globalLogger := Global()
+	SetGlobalLogger(logger)
+	assert.NotEqual(t, logger, globalLogger) // Before assigning the logger
+	globalLogger = Global()
+	assert.Equal(t, logger, globalLogger) // After assigning the logger
 }
