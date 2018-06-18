@@ -152,13 +152,6 @@ func TestHostname(t *testing.T) {
 	assert.Contains(t, s[0], fmt.Sprintf(`"hostname":"%s"`, hostname))
 }
 
-func TestFormatting(t *testing.T) {
-	outC, w := StartLogCapturing()
-	logger := NewWithOutput("testContextLogger", w)
-	logger.Info("Time duration", "duration", time.Second*5, "durationString", (time.Second * 5).String())
-	StopLogCapturing(outC, w)
-}
-
 func TestLockWriter(t *testing.T) {
 	s := lockWriter(os.Stdout)
 	assert.NotNil(t, s)
