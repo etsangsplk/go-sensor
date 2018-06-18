@@ -2,7 +2,6 @@ package logging
 
 import (
 	"context"
-	"net/http"
 
 	"gopkg.in/mgo.v2/bson"
 )
@@ -25,17 +24,29 @@ func From(ctx context.Context) *Logger {
 	return Global()
 }
 
-// NewContext creates a new context that includes logger as a context value.
+// NewContext extends context ctx with logger as a context value.
 // Use this to add a customized logger to a context and then flow that context
 // through your function calls. If optional fields are provided the supplied
 // logger will be first extended with those fields via logger.With().
-// After a logger is added to a context it can be retrieved using log.From(ctx).
+// After a logger is added to a context it can be retrieved using logging.From(ctx).
 func NewContext(ctx context.Context, logger *Logger, fields ...interface{}) context.Context {
 	if len(fields) > 0 {
 		logger = logger.With(fields...)
 	}
 
 	return context.WithValue(ctx, loggerContextKey, logger)
+}
+
+// newContextWithField extends the logger found in ctx with the field specified by key and field. If the optional
+// fields is specified then those are added to the logger as well. The new logger is then added to ctx and
+// that is returned. If no logger is found then nil is returned.
+func newContextWithField(ctx context.Context, key string, field string, fields ...interface{}) context.Context {
+	logger := From(ctx)
+	if logger == nil {
+		return nil
+	}
+	logger = logger.With(key, field)
+	return NewContext(ctx, logger, fields...)
 }
 
 // NewRequestContext creates a context with a new request logger.  The request
@@ -48,9 +59,16 @@ func NewRequestContext(ctx context.Context, requestID string, fields ...interfac
 	if len(requestID) == 0 {
 		requestID = bson.NewObjectId().Hex()
 	}
-	logger := From(ctx)
-	logger = logger.With(RequestIdKey, requestID)
-	return NewContext(ctx, logger, fields...)
+	return newContextWithField(ctx, RequestIdKey, requestID, fields...)
+}
+
+// NewTenantContext extends the context ctx with a new logger with the tenant field
+// with value tenantID. The new logger is
+// derived from the logger found by calling logging.From(ctx). If no logger is found
+// then nil is returned. If optional fields are provided the supplied
+// logger will be first extended with those fields via logger.With().
+func NewTenantContext(ctx context.Context, tenantID string, fields ...interface{}) context.Context {
+	return newContextWithField(ctx, TenantKey, tenantID, fields...)
 }
 
 // NewComponentContext creates a new context that includes a component logger. A
@@ -59,9 +77,7 @@ func NewRequestContext(ctx context.Context, requestID string, fields ...interfac
 // nil is returned. If optional fields are provided the supplied
 // logger will be first extended with those fields via logger.With().
 func NewComponentContext(ctx context.Context, component string, fields ...interface{}) context.Context {
-	logger := From(ctx)
-	logger = logger.With(ComponentKey, component)
-	return NewContext(ctx, logger, fields...)
+	return newContextWithField(ctx, ComponentKey, component, fields...)
 }
 
 // NewTestContext is a convenience function for use in unit tests when
@@ -74,38 +90,4 @@ func NewTestContext(testName string, fields ...interface{}) context.Context {
 	ctx := context.Background()
 	logger := New(testName)
 	return NewContext(ctx, logger, fields...)
-}
-
-// Middleware HTTP Handlers
-
-// RequestHandler provides an http.Handler that will extend the http context
-// with a context created using NewRequestContext() to do requestId tracing.
-type RequestHandler struct {
-	handler      http.Handler // the next handler in the chain
-	parentLogger *Logger
-}
-
-// NewRequestHandler returns a logging request handler that implements the
-// http.HttpHandler interface. If parentLogger is nil then the global logger
-// will be used as the parent logger.
-func NewRequestHandler(parentLogger *Logger, handler http.Handler) *RequestHandler {
-	return &RequestHandler{
-		handler:      handler,
-		parentLogger: parentLogger,
-	}
-}
-
-// ServeHTTP implements the http.Handler interface.
-func (self *RequestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// r.Header.Get("X-REQUEST-ID") will return a uuid requestId if there is one
-	// or else an empty string, that can be forwarded downstream.
-	// This is useful for tracing and/or correlation.
-	requestID := r.Header.Get("X-REQUEST-ID")
-	ctx := r.Context()
-	if self.parentLogger != nil {
-		ctx = NewContext(ctx, self.parentLogger)
-	}
-	ctx = NewRequestContext(ctx, requestID)
-	r = r.WithContext(ctx)
-	self.handler.ServeHTTP(w, r)
 }
