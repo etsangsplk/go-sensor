@@ -41,7 +41,7 @@ HTTP middleware handlers in tracing, logging and metrics packages compose togeth
 | logging.NewRequestLoggerHandler  | Creates a request logger and adds it to the http request context. The request logger will trace requestID, operationID and tenantID if they are available in the http context (set by earlier handlers).
 | logging.NewPanicRequestHandler   | Logs out request-scoped panics using the request logger. Will re-panic control to the global panic handler which must also be configured. Depends on NewRequestLoggerHandler and NewPanicHandler.
 | logging.NewHTTPAccessHandler     | Logs out http access logs using the request logger. Optionally depends on NewRequestLoggerHandler and its dependencies or custom middleware to provide context.
-| metrics.NewHTTPAccessHandler     | Observes http access metrics using request-scoped context. Optionally depends on operationID context.
+| metrics.NewHTTPAccessHandler     | Observes http access metrics using request-scoped context. Optionally depends on operationID context. Must call the metrics.RegisterHTTPMetrics function during service initialization.
 
 ```go
 // These 'global' handlers do not depend on routing operation id and should come before those listed in func setupMiddleware below
@@ -58,7 +58,7 @@ func setupMiddleware(handler http.Handler) http.Handler {
 		logging.NewRequestLoggerHandler(logging.Global(), // create the request logger and add it to context
 			logging.NewPanicRequestHandler( // request panic handler logs using request logger
 				logging.NewHTTPAccessHandler( // emit http access logs
-					metrics.NewHTTPAccessHandler( // observe http metrics
+					metrics.NewHTTPAccessHandler( // observe http metrics. metrics.RegisterHTTPMetrics(serviceName) must be called during service initialization
 						handlers.NewAuthHandler(handler)))))) // a custom service handler
 }
 ```

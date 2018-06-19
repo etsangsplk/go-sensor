@@ -27,6 +27,7 @@ Forthcoming features not yet implemented:
 
 ## Proper API Usage
 Here is a list of common conventions to follow as you insrument your service:
+0) Do not use the zap library functions or assume that zap is the underlying logging library.
 1) Capitalize the first letter in a message, do not end with punctuation.
 2) Make 'ctx context.Context' the first parameter and name the parameter 'ctx'.
 3) Pass ctx not logger instances as function parameters, context is more general and can more useful capabilities beyond loggers.

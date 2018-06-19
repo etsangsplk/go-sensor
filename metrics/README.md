@@ -204,12 +204,12 @@ Additionally the http metrics must be registered. To accomplish this:
 ```go
 import (
       kvmetrics "github.com/splunk/kvstore-service/kvstore/metrics"
-      metrics "github.com/splunk/ssc-observation/metrics" 
+      "github.com/splunk/ssc-observation/metrics" 
 )
 
 func configureAPI(api *operations.KVStoreAPI) http.Handler {
-	// Register http metrics
-	metrics.RegisterHTTPMetrics()
+	// Register http metrics, passing it a string to scope the metrics, for example the service name.
+	metrics.RegisterHTTPMetrics(serviceName)
 	// Register custom service metrics
 	kvmetrics.Register()
 }
