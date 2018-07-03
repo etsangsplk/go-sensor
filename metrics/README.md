@@ -21,17 +21,20 @@ Metrics instrumentation enables observability of a service by externalizing meas
 * Support for a rich set of [metric types](https://prometheus.io/docs/concepts/metric_types/)
   * __Counter__: A counter is a cumulative metric that represents a value that only ever goes up. Counters support automatic rate calculations such as http requests per second.
   * __Gauge__: A gauge is a metric that represents a value that can arbitrarily go up and down.
-  * __Histogram__: A histogram is a metric that represents the distribution of a set of observations over a defined set of buckets. Histograms can be aggregated and are calculated in the prometheus server.
+  * __Histogram__: A [histogram] is a metric that represents the distribution of a set of observations over a defined set of buckets. Histograms can be aggregated and are calculated in the prometheus server.
   * __Summary__: A summary is a metric that represents the distribution of a set of observations over a defined set of phi-quantiles over a sliding time window. Summaries can not be aggregated and are calculated in the service itself (not in the prometheus server). At this time we are recomending that services not use summaries. If you have a use case please post it to the ssc-observation channel in slack.
 * __ssc-observation__: Common library repository with APIs and middleware for use by SSC services for service instrumentation. Contains the packages metrics, tracing and logging. The tracing package provides functionality that is related to tracing, such as extracting the tenant ID and making it available, creating a request ID, and so on. The metrics and logging libraries make use of some of the functionality provided by the tracing package.
 * __Metrics Middleware__: Common library code that provides consistent metrics on http requests and serves up the metrics endpoint through simple configuration.
-* __Metrics Endpoint__: Prometheus uses a pull-based model and each service must publish a metrics endpoint (provided via common library middleware). 
+* __Metrics Endpoint__: Prometheus uses a pull-based model and each service must publish a metrics endpoint (provided via common library middleware).
 
 Read the [Prometheus Overview](https://prometheus.io/docs/introduction/overview/) for more details on the full prometheus system and its features.
 
 Read the [Histograms](https://prometheus.io/docs/practices/histograms/) page for a more in depth discussion of this metric.
 
 Counter, Gauge, and Histogram will be the most common metric types used.
+
+> **IMPORTANT:**
+> Please see below for **specific instruction** regarding the use of [histogram] metrics.
 
 ## Non-Golang Services
 Prometheus has client libraries for golang, java, scala and python. Non-golang services are recommended to use these libraries. For components instrumented with dropwizard we are working on enabling this.
@@ -71,10 +74,10 @@ func getDB(host string, database string) *sql.DB {
 
      // Observe the metric for open connections
      // First, get the gauge instance for the given host value. If this is the first time host has been seen then a new instance will be created.
-     // Next, set the current value. This is just a local memory operation.     
+     // Next, set the current value. This is just a local memory operation.
      dbConnections.WithLabelValues(host, database)
           .Set(float64(db.Stats().OpenConnections))
-     
+
      return db
 }
 ```
@@ -82,6 +85,88 @@ func getDB(host string, database string) *sql.DB {
 If your metric has no dimensions then use prometheus.NewGauge(), [see example](https://godoc.org/github.com/prometheus/client_golang/prometheus#hdr-A_Basic_Example).
 
 In addition to defining the metric and observing the values each service must serve a /metrics endpoint and make their service discoverable by the Prometheus Server. Promethues uses a pull based model to scrape metrics from each service on a configured interval. Those topics are covered later.
+
+## Correct use of histograms
+
+The [Prometheus histogram] implementation is counter intuitive as
+compared to a [typical histogram]. The intent of this portion of the
+documentation is to understand how it's unique, and how to use it
+correctly.
+
+### Cumulative buckets
+
+The bucket implementation is [cumulative], which means that the client
+buckets include the samples of the buckets below it. The [rationale]
+for [cumulative] buckets is that it allows buckets to be deleted
+without breaking queries. While this useful, it makes it difficult to
+query for the observation counts within a particular bucket (because
+it includes observations from all buckets below it). Ironically this
+makes it very difficult to plot the observation counts for each bucket
+within the histogram.
+
+### Linear interpolation
+
+The [histogram quantile] calculation **assumes a linear
+interpolation** within buckets. The upstream developers have
+documented the [errors of quantile estimation], but basically the
+[histogram quantile] function is always wrong (based on the bucket
+layout). For this reason please honor the following recommendations:
+
+1. Do not use Prometheus [histogram] metrics for statistical analysis.
+   If you need to perform statistical analysis log each observation
+   and use Splunk to perform analysis.
+1. For alerting purposes it's appropriate to use [histogram] metrics,
+   but do not use the [histogram quantile] function. Instead create
+   alerts directly against the bucket boundaries.
+
+### Example query for use with alerts
+
+If you're using a histogram for the purpose of alerting, you have two
+goals:
+
+1. Alert your team when `n` percentage of requests fall outside an
+   acceptable bucket boundary.
+1. Alert your team when bucket sizes are potentially incorrect.
+
+Let's assume the following example inputs:
+
+- The name of the histogram metric is: `k8s_demo_rest_api_histogram_seconds`
+- The metric boundaries include `1` and `10` the latter being the
+  largest (below `+Inf`), in this case we're using [default buckets]
+- The metric has `code`, `method`, and `operation` labels for grouping
+- The expected latency is below `1s`
+- You want to be alerted if `1%` of traffic falls above this threshold
+  given a `5m` average
+- You want to be alerted if `1%` of traffic is beyond the largest
+  bucket
+
+#### Latency alert
+
+```
+sum(rate(k8s_demo_rest_api_histogram_seconds_bucket{le="1"}[5m])
+    / ignoring(le) rate(k8s_demo_rest_api_histogram_seconds_count[5m]))
+by (code, method, operation) < 0.99
+```
+
+This alert will tell us if more than `1%` of the traffic is above `1s`.
+
+#### Boundary alert
+
+- If the largest configured bucket is `10s`:
+
+```
+sum(rate(k8s_demo_rest_api_histogram_seconds_bucket{le="10"}[5m])
+    / ignoring(le) rate(k8s_demo_rest_api_histogram_seconds_count[5m]))
+by (code, method, operation) < 0.99
+```
+
+This will tell us when `1%` or more traffic is larger than the largest
+bucket. If you see this you need to either adjust the bucket boundary
+or make your program faster :)
+
+> NOTE:
+> Because the calculation involves metrics with different labels, the
+> `le` label must be `ignored` (the rest are identical)
 
 # Features of the Metrics APIs
 As mentioned above, instrumenting an SSC service involves using both this package and the Prometheus client APIs. The metrics package provides largely supporting capability.
@@ -143,7 +228,7 @@ import (
 var (
 	DbRequestsDurationsHistogram = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Namespace: "kvstore",                
+			Namespace: "kvstore",
 			Name:    "db_durations_histogram_seconds",
 			Help:    "Database latency distributions",
 			Buckets: prometheus.DefBuckets,
@@ -158,7 +243,7 @@ func Register() {
 ```
 
 # Observing Custom Metrics
-With the metric defined and registered, the service code must be instrumented to observe the metric values to the Prometheus server. Recall that Prometheus is pull based so from the service perspective observing a metric value is a local memory operation. The value observed will be folded into previous observations since the last scrape. For example, if a gauge is observed multiple times between scrapes only the latest value will be ingested into the Prometheus server. 
+With the metric defined and registered, the service code must be instrumented to observe the metric values to the Prometheus server. Recall that Prometheus is pull based so from the service perspective observing a metric value is a local memory operation. The value observed will be folded into previous observations since the last scrape. For example, if a gauge is observed multiple times between scrapes only the latest value will be ingested into the Prometheus server.
 
 Building on the database metrics defined above one would observe runtime values with code like the following. First, a couple of notes:
 * WithLabelValues() is used to get the specific time series for the given set of label values.
@@ -218,7 +303,7 @@ Additionally the http metrics must be registered. To accomplish this:
 ```go
 import (
       kvmetrics "github.com/splunk/kvstore-service/kvstore/metrics"
-      "github.com/splunk/ssc-observation/metrics" 
+      "github.com/splunk/ssc-observation/metrics"
 )
 
 func configureAPI(api *operations.KVStoreAPI) http.Handler {
@@ -275,4 +360,11 @@ Here is an example query that shows container CPU usage for kvstore.
 sum (rate (container_cpu_usage_seconds_total{image!="",namespace="kvstore",pod_name=~"kvservice.*"}[1m])) by (pod_name,namespace)
 ```
 
-
+[cumulative]: https://en.wikipedia.org/wiki/Histogram#Cumulative_histogram
+[default buckets]: https://github.com/prometheus/client_golang/blob/180b8fdc22b4ea7750bcb43c925277654a1ea2f3/prometheus/histogram.go#L54-L64
+[errors of quantile estimation]: https://prometheus.io/docs/practices/histograms/#errors-of-quantile-estimation
+[histogram quantile]: https://prometheus.io/docs/prometheus/latest/querying/functions/#histogram_quantile
+[histogram]: #correct-use-of-histograms
+[Prometheus histogram]: https://prometheus.io/docs/practices/histograms/
+[rationale]: https://www.robustperception.io/why-are-prometheus-histograms-cumulative/
+[typical histogram]: https://en.wikipedia.org/wiki/Histogram
