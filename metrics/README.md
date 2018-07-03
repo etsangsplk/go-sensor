@@ -98,18 +98,32 @@ As mentioned above, instrumenting an SSC service involves using both this packag
 
 The total set of metrics in the Prometheus server will include custom metrics from each SSC service, kubernetes metrics, and metrics pulled from AWS Cloudwatch.
 
-# Understanding Metrics Dimensions
-Metrics dimensions are a powerful capability and provided necessary to drill-in and out on metrics data without changing service code. When defining a metric with labels you actually define a metrics vector like CounterVec. A metrics vector is a collector of a bundle of metrics. The bundle exists because each unique set of metric name and key-value pairs observed at runtime will define a new time series. For example, for the labels “method” and “statusCode” on the metric “http_requests_total” you might get three time series:
-* {"kvstore_http_requests_total", "method", "POST", "statusCode", "200"}
-* {"kvstore_http_requests_total", "method", "POST", "statusCode", "500"}
-* {"kvstore_http_requests_total", "method", "GET", "statusCode", "200"}
+# Understanding Metrics Dimensions and Cardinality
+Metrics dimensions are a powerful capability that enable drill-in and drill-out at query time via aggregation functions.
 
-A new time series will be created when new values "GET" and "429" are later observed.
-* {"kvstore_http_requests_total", "method", "GET", "statusCode", "429"}
-
+When defining a metric with dimensions (labels) you actually define a metrics vector like CounterVec. It is a vector because each unique set of metric name and key-value pairs observed at runtime will define a new time series. For example, for the labels “method” and “statusCode” on the metric “http_requests_total” you might get three time series:
+```
+{"kvstore_http_requests_total", "method", "POST", "statusCode", "200"}
+{"kvstore_http_requests_total", "method", "POST", "statusCode", "500"}
+{"kvstore_http_requests_total", "method", "GET", "statusCode", "200"}
+```
+A new time series will be created when new values `GET` and `429` are later observed.
+```
+{"kvstore_http_requests_total", "method", "GET", "statusCode", "429"}
+```
 From the perspective of the service instrumentation this all happens behind the scenes.
 
-One must be careful to understand the cardinality of the dimensions used. Something like user id will certainly have too many unique values. Bounded values like http status codes or operation ids are fine. TenantID is still TBD but will likely be allowed initially until we better understand the implications.
+Metric cardinality is the number of unique <dimension>=<value> pair sets observed for a metric. For example, `{operationID=”createCollection”, code=”200”}` and `{operationID=”createCollection”, code=”500”}` are two unique sets of dimension-value pairs and will generate two time-series in the metric database.
+
+Cardinality has an impact on aggregation performance and resource consumption of the Prometheus Server. Use these guidelines when choosing dimensions:
+* Each unique set of dimension values creates a new time series in the Prometheus Server.
+* Multiplying the cardinality of individual dimensions can provide an upper bound for the number of time-series created for a metric. For example, # Tenants x # HTTP Response Codes x # Operation IDs. In practice not all combinations will be observed, for example a 201 for a delete operation would not exist.
+* __It is ok to use tenantID as a dimension where there are known use cases.__ Tenant level metrics can be valuable but be mindful of the dimension multiplier effect and the impact to aggregation performance. Consider that alerts will generally not be per-tenant.
+* Do not use dimensions that have unbounded cardinality. Do not use requestID as a dimension, if you need to record each data point then use logging.
+* Aggregation performance for analysis queries can be improved by using Prometheus recording rules which ‘pre-compute’ a new time series based on an aggregation. This can speed queries for dashboards, for example.
+* If the cardinality of using a dimension becomes too high then use logging (with the added dimension) instead of or in addition to metrics.
+
+The infrastructure team will add capacity and partitioning as necessary as Prometheus Server resource consumption increases. This will enable the server to support more time-series and data points but may not improve aggregation performance.
 
 # Defining Custom Metrics
 Defining a metric involves choosing the metric type, defining the metric name, and the labels (if any) that will be used to dimension the observations.
