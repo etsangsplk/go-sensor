@@ -16,7 +16,9 @@ type httpAccessHandler struct {
 }
 
 // NewHTTPAccessHandler constructs a new middleware instance for emitting
-// http access logs.
+// http access logs. This handler uses tracing.OperationIDFrom() to get
+// the operationID from request context. The handler will trace the fields
+// method, operation, code, respoonseBytes, durationMS, path, and rawQuery.
 func NewHTTPAccessHandler(next http.Handler) http.Handler {
 	return &httpAccessHandler{next: next}
 }
@@ -48,10 +50,9 @@ type requestLoggerHandler struct {
 }
 
 // NewRequestLoggerHandler creates a middleware instance that adds the request logger to
-// the http request context. The request logger will include fields for tenant id and
-// request id if those values are found on context (see the tracing package).
-// If parentLogger is nil then the global logger
-// will be used as the parent logger.
+// the http request context. The request logger uses tracing.RequestIDFrom and
+// tracing.TenantIDFrom to extract those values from request context, if available.
+// If parentLogger is nil then the global logger will be used as the parent logger.
 func NewRequestLoggerHandler(parentLogger *Logger, handler http.Handler) http.Handler {
 	return &requestLoggerHandler{
 		handler:      handler,
@@ -85,12 +86,14 @@ type panicHandler struct {
 // NewPanicHandler creates a middlware instance that handles panics and
 // logs the error and callstack using the global logger. It also writes
 // out an http response header and json body for an internal server error (status code 500).
-// NewPanicRequestHandler can be used in addition to this handler to get panic logs with
-// request context information (request id and tenant id).
+// NewPanicHandler can be used with NewPanicRequestHandler. NewPanicHandler should be at the
+// root of your middlware chain. NewPanicRequestHandler can be used to handle panics after
+// request context has been enriched with requestID and tenantID.
 func NewPanicHandler(next http.Handler) http.Handler {
 	return &panicHandler{next: next}
 }
 
+// ServeHTTP implements the http.Handler interface.
 func (p *panicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if rerr := recover(); rerr != nil {
@@ -120,8 +123,8 @@ type panicRequestHandler struct {
 // NewPanicRequestHandler creates a middleware instance that handles panics and
 // logs the error and callstack using the request logger from http context. It should
 // be registered after NewRequestLoggerHandler. This handler requires that
-// the global panic handler registered with NewPanicHandler be set at the root
-// as this handler does not write out an error response.
+// the global panic handler (registered with NewPanicHandler) be set upstream of this handler
+// (at the root for example) as this handler does not write out an error response.
 func NewPanicRequestHandler(next http.Handler) http.Handler {
 	return &panicRequestHandler{next: next}
 }

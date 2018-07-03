@@ -15,8 +15,10 @@ var (
 	httpRequestsDurationsHistogram *prometheus.HistogramVec
 )
 
-// RegisterHTTPMetrics registers the http metrics with for observation on
-// the local prometheus metrics endpoint.
+// RegisterHTTPMetrics registers the http metrics for scraping at
+// the service's prometheus metrics endpoint. The metrics registered
+// are http_requests_active and http_requests_durations_histogram_seconds.
+// If provided namespace is prefixed to the metric name for each metric.
 func RegisterHTTPMetrics(namespace string) {
 	httpRequestsActive = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -45,7 +47,9 @@ type httpAccessHandler struct {
 }
 
 // NewHTTPAccessHandler constructs a new middleware instance for observing
-// http metrics.
+// http metrics with the http_requests_durations_histogram_seconds metric.
+// The handler uses tracing.OperationIDFrom() to extract the operation ID
+// from the request context, if any.
 func NewHTTPAccessHandler(next http.Handler) *httpAccessHandler {
 	return &httpAccessHandler{next: next}
 }
@@ -72,7 +76,7 @@ type prometheusHandler struct {
 }
 
 // NewPrometheusHandler constructs a new middleware instance for serving
-// the Prometheus metrics endpoint.
+// the Prometheus metrics endpoint at "/service/metrics".
 func NewPrometheusHandler(next http.Handler) http.Handler {
 	return &prometheusHandler{
 		prom: promhttp.Handler(),
@@ -80,6 +84,7 @@ func NewPrometheusHandler(next http.Handler) http.Handler {
 	}
 }
 
+// ServeHTTP implements the http.Handler interface.
 func (p *prometheusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/service/metrics" {
 		p.prom.ServeHTTP(w, r)

@@ -9,29 +9,33 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// Constants for standard field key names
+// Constants for standard key names
 const (
 	CallstackKey = "callstack"
 	ComponentKey = "component"
 	ErrorKey     = "error"
-	FileKey      = "location" // TODO: remove during breaking changes (now LocationKey)
+	FileKey      = "location" // Deprecated: use LocationKey
 	HostnameKey  = "hostname"
 	LevelKey     = "level"
 	LocationKey  = "location"
 	MessageKey   = "message"
-	RequestIdKey = "requestId" // TODO: remove during breaking changes
+	RequestIdKey = "requestId" // Deprecated: use RequestIDKey
 	RequestIDKey = "requestId"
 	ServiceKey   = "service"
 	TimeKey      = "time"
 	TenantKey    = "tenant"
-	UrlKey       = "url" // TODO: remove during breaking changes
+	UrlKey       = "url" // Deprecated: use URLKey
 	URLKey       = "url"
 )
 
 var globalLogger = NewNoOp()
 
-// SetGlobalLogger sets the global logger
+// SetGlobalLogger sets the global logger. By default it is
+// a no-op logger. Passing nil will panic.
 func SetGlobalLogger(l *Logger) {
+	if l == nil {
+		panic("The global logger can not be nil")
+	}
 	globalLogger = l
 }
 
@@ -54,9 +58,9 @@ func New(serviceName string) *Logger {
 	return NewWithOutput(serviceName, os.Stdout)
 }
 
-// NewWithOutput constructs a new logger and writes output to writer
-// writer is a io.writer that also supports concurrent writes.
-// In other words, it must implement io.writer and a Sync() method
+// NewWithOutput constructs a new logger and writes output to writer.
+// writer is an io.writer that also supports concurrent writes.
+// The writer will be wrapped with zapcore.AddSync()
 func NewWithOutput(serviceName string, writer io.Writer) *Logger {
 	encoderCfg := zapcore.EncoderConfig{
 		MessageKey:     MessageKey,
@@ -81,8 +85,8 @@ func NewWithOutput(serviceName string, writer io.Writer) *Logger {
 	return &Logger{logger.Sugar(), &atomLevel}
 }
 
-// NewNoOp returns a no-op Logger, which writes out logs or internal errors,
-// useful for unit testing
+// NewNoOp returns a no-op Logger that doesn't emit any logs. This is
+// the default global logger.
 func NewNoOp() *Logger {
 	// Does not matter what level as this is NoOp.
 	atomLevel := zap.NewAtomicLevelAt(zapcore.InfoLevel)
@@ -108,7 +112,8 @@ func (l *Logger) SetCallstackSkip(skip int) *Logger {
 	return &Logger{newLogger.Sugar(), l.level}
 }
 
-// Flush ensures that all buffered messages are written.
+// Flush ensures that all buffered messages are written. Normally it only needs to be called
+// before program exit.
 func (l *Logger) Flush() error {
 	return l.sugared.Sync()
 }
@@ -123,7 +128,7 @@ func (l *Logger) Info(msg string, fields ...interface{}) {
 	l.sugared.Infow(msg, fields...)
 }
 
-// Error logs a message at ErrorLevel. The err is traced as {"error": err.Error()}
+// Error logs a message at ErrorLevel. err is traced as {"error": err.Error()}
 func (l *Logger) Error(err error, msg string, fields ...interface{}) {
 	fields = append(fields, ErrorKey, err)
 	l.sugared.Errorw(msg, fields...)
@@ -134,14 +139,14 @@ func (l *Logger) Warn(msg string, fields ...interface{}) {
 	l.sugared.Warnw(msg, fields...)
 }
 
-// Fatal logs a message at FatalLevel and then calls os.Exit(1). The err is traced
+// Fatal logs a message at FatalLevel and then calls os.Exit(1). err is traced
 // as {"error": err.Error()}
 func (l *Logger) Fatal(err error, msg string, fields ...interface{}) {
 	fields = append(fields, ErrorKey, err)
 	l.sugared.Fatalw(msg, fields...)
 }
 
-// DebugEnabled returns true if the debug log level or lower is enabled.
+// DebugEnabled returns true if the logger level is debug or lower.
 // It is a shortcut for Enabled(logging.DebugLevel)
 func (l *Logger) DebugEnabled() bool {
 	return l.level.Enabled(zapcore.DebugLevel)
@@ -163,7 +168,7 @@ func (l *Logger) Level() Level {
 	return Level(l.level.Level())
 }
 
-// With constructs a clone of logger with the addition of fields which are
+// With constructs a clone of logger with the added fields.. fields are
 // key-value pairs that will be included in each trace.
 // The return value is the new logger which shares the same atomic level
 // as the parent.

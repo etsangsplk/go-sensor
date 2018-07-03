@@ -16,6 +16,7 @@ const (
 // From returns the logger in ctx. If no logger is found then the global
 // logger is returned. For example if you pass context.Background() then
 // you will get back the global logger. From will panic if ctx is nil.
+// Use NewContext or similar methods to add a logger to a ctx.
 func From(ctx context.Context) *Logger {
 	if l, ok := ctx.Value(loggerContextKey).(*Logger); ok && l != nil {
 		return l
@@ -48,10 +49,9 @@ func newContextWithField(ctx context.Context, key string, field string, fields .
 	return NewContext(ctx, logger, fields...)
 }
 
-// NewRequestContext creates a context with a new request logger.  The request
-// logger will include the requestId in each trace. The request logger is
-// derived from the logger found by calling logging.From(ctx). If no logger is found
-// then nil is returned. If requestId is zero length then a new globally
+// NewRequestContext creates a context with a new request logger.  Request
+// loggers include a requestID field in each trace. The request logger is
+// derived from the logger found by calling logging.From(ctx). If requestID is zero length then a new globally
 // unique bson hex id will be generated. If optional fields are provided the supplied
 // logger will be first extended with those fields via logger.With().
 func NewRequestContext(ctx context.Context, requestID string, fields ...interface{}) context.Context {
@@ -61,20 +61,17 @@ func NewRequestContext(ctx context.Context, requestID string, fields ...interfac
 	return newContextWithField(ctx, RequestIdKey, requestID, fields...)
 }
 
-// NewTenantContext extends the context ctx with a new logger with the tenant field
-// with value tenantID. The new logger is
-// derived from the logger found by calling logging.From(ctx). If no logger is found
-// then nil is returned. If optional fields are provided the supplied
-// logger will be first extended with those fields via logger.With().
+// NewTenantContext extends the context ctx with a new logger with the tenant field.
+// The new logger is derived from the logger found by calling logging.From(ctx).
+// If optional fields are provided the logger is first extended with those fields via logger.With().
 func NewTenantContext(ctx context.Context, tenantID string, fields ...interface{}) context.Context {
 	return newContextWithField(ctx, TenantKey, tenantID, fields...)
 }
 
-// NewComponentContext creates a new context that includes a component logger. A
-// component logger will trace the field {"component": component}. The parent
-// logger is acquired by calling logging.From(ctx). If no logger is found then
-// nil is returned. If optional fields are provided the supplied
-// logger will be first extended with those fields via logger.With().
+// NewComponentContext creates a new context with a component logger. Component loggers
+// trace the field {"component": component}. The parent
+// logger is acquired by calling logging.From(ctx). If optional fields are provided the supplied
+// logger is first extended with those fields via logger.With().
 func NewComponentContext(ctx context.Context, component string, fields ...interface{}) context.Context {
 	return newContextWithField(ctx, ComponentKey, component, fields...)
 }

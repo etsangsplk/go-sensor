@@ -11,11 +11,11 @@ type requestContextHandler struct {
 	next http.Handler // the next handler in the chain
 }
 
-// NewRequestContextHandler creates a tracing request handler extracts the tracing relevant values
-// request ID and tenant ID from the http request and adds them to the request
+// NewRequestContextHandler creates a tracing request handler that extracts the tracing relevant values
+// request ID and tenant ID from the http request. The values are added to the request
 // context for use in logging and metrics. The functions
-// RequestIDFrom and TenantIDFrom can be used to extract these values.
-// RequestHandler assumes that the first part of every endpoint path is
+// RequestIDFrom and TenantIDFrom can be used to extract these values back out of context.
+// NewRequestContextHandler assumes that the first part of every endpoint path is
 // the tenant id.
 func NewRequestContextHandler(next http.Handler) http.Handler {
 	return &requestContextHandler{
