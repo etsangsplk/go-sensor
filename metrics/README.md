@@ -95,31 +95,33 @@ correctly.
 
 ### Cumulative buckets
 
-The bucket implementation is [cumulative], which means that the client
+The bucket implementation is [cumulative], which means that the
 buckets include the samples of the buckets below it. The [rationale]
 for [cumulative] buckets is that it allows buckets to be deleted
 without breaking queries. While this useful, it makes it difficult to
 query for the observation counts within a particular bucket (because
-it includes observations from all buckets below it). Ironically this
-makes it very difficult to plot the observation counts for each bucket
-within the histogram.
+it includes observations from all buckets below it). Obtaining
+observation counts for each bucket requires subtraction between the
+two.
 
-### Linear interpolation
+### Quantile estimation error
 
 The [histogram quantile] calculation **assumes a linear
 interpolation** within buckets. The upstream developers have
 documented the [errors of quantile estimation], but basically the
-[histogram quantile] function is always wrong (based on the bucket
-layout). For this reason please honor the following recommendations:
+[histogram quantile] function is always approximate (based on the
+bucket layout). For this reason please honor the following
+recommendations:
 
-1. Do not use Prometheus [histogram] metrics for statistical analysis.
-   If you need to perform statistical analysis log each observation
-   and use Splunk to perform analysis.
+1. Do not use Prometheus [histogram] metrics for statistical analysis
+   if you need an accurate value.  If you need to perform statistical
+   analysis log each observation and use Splunk to perform analysis.
 1. For alerting purposes it's appropriate to use [histogram] metrics,
    but do not use the [histogram quantile] function. Instead create
-   alerts directly against the bucket boundaries.
+   alerts directly against the bucket boundaries which will provide
+   accurate measurements.
 
-### Example query for use with alerts
+### Alerting on histogram bucket boundaries
 
 If you're using a histogram for the purpose of alerting, you have two
 goals:
@@ -131,7 +133,7 @@ goals:
 Let's assume the following example inputs:
 
 - The name of the histogram metric is: `k8s_demo_rest_api_histogram_seconds`
-- The metric boundaries include `1` and `10` the latter being the
+- The bucket boundaries include `1` and `10` the latter being the
   largest (below `+Inf`), in this case we're using [default buckets]
 - The metric has `code`, `method`, and `operation` labels for grouping
 - The expected latency is below `1s`
@@ -157,10 +159,10 @@ This alert will tell us if more than `1%` of the traffic is above `1s`.
 ```
 sum(rate(k8s_demo_rest_api_histogram_seconds_bucket{le="10"}[5m])
     / ignoring(le) rate(k8s_demo_rest_api_histogram_seconds_count[5m]))
-by (code, method, operation) < 0.99
+by (code, method, operation) < 0.995
 ```
 
-This will tell us when `1%` or more traffic is larger than the largest
+This will tell us when `0.5%` or more traffic is larger than the largest
 bucket. If you see this you need to either adjust the bucket boundary
 or make your program faster :)
 
