@@ -152,20 +152,6 @@ by (code, method, operation) < 0.99
 
 This alert will tell us if more than `1%` of the traffic is above `1s`.
 
-#### Boundary alert
-
-- If the largest configured bucket is `10s`:
-
-```
-sum(rate(k8s_demo_rest_api_histogram_seconds_bucket{le="10"}[5m])
-    / ignoring(le) rate(k8s_demo_rest_api_histogram_seconds_count[5m]))
-by (code, method, operation) < 0.995
-```
-
-This will tell us when `0.5%` or more traffic is larger than the largest
-bucket. If you see this you need to either adjust the bucket boundary
-or make your program faster :)
-
 > NOTE:
 > Because the calculation involves metrics with different labels, the
 > `le` label must be `ignored` (the rest are identical)
