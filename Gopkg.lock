@@ -3,6 +3,21 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/alecthomas/template"
+  packages = [
+    ".",
+    "parse"
+  ]
+  revision = "a0175ee3bccc567396460bf5acd36800cb10c49c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/alecthomas/units"
+  packages = ["."]
+  revision = "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
+
+[[projects]]
+  branch = "master"
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
@@ -52,6 +67,7 @@
   packages = [
     "expfmt",
     "internal/bitbucket.org/ww/goautoneg",
+    "log",
     "model"
   ]
   revision = "7600349dcfe1abd18d72d3a1770870d9800a7801"
@@ -66,6 +82,18 @@
     "xfs"
   ]
   revision = "94663424ae5ae9856b40a9f170762b4197024661"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/sebest/xff"
+  packages = ["."]
+  revision = "6c115e0ffa35d6a2e3f7a9e797c9cf07f0da4b9f"
+
+[[projects]]
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  revision = "3e01752db0189b9157070a0e1668a620f9a85da2"
+  version = "v1.0.6"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -99,6 +127,29 @@
   version = "v1.8.0"
 
 [[projects]]
+  branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["ssh/terminal"]
+  revision = "c126467f60eb25f8f27e5a981f32a87e3965053f"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = [
+    "unix",
+    "windows",
+    "windows/registry",
+    "windows/svc/eventlog"
+  ]
+  revision = "e072cadbbdc8dd3d3ffa82b8b4b9304c261d9311"
+
+[[projects]]
+  name = "gopkg.in/alecthomas/kingpin.v2"
+  packages = ["."]
+  revision = "947dcec5ba9c011838740e680966fd7087a71d0d"
+  version = "v2.2.6"
+
+[[projects]]
   branch = "v2"
   name = "gopkg.in/mgo.v2"
   packages = [
@@ -110,6 +161,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5339d7dec7ac7ff1157947b5a4960bce5224f4ca08f0be0a3f65f1b1de531117"
+  inputs-digest = "2e3fb4b2e7d2bf6a2929c848c5b532be135d922df7d0d9f6df3bd2dfdf2ea77b"
   solver-name = "gps-cdcl"
   solver-version = 1

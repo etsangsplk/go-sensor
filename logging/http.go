@@ -7,6 +7,8 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/sebest/xff"
+
 	"github.com/splunk/ssc-observation/tracing"
 )
 
@@ -41,7 +43,8 @@ func (h *httpAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"responseBytes", rw.ResponseBytes(),
 		"durationMS", durationStringMS,
 		"path", r.URL.Path,
-		"rawQuery", r.URL.RawQuery)
+		"rawQuery", r.URL.RawQuery,
+		"realClientIP", xff.GetRemoteAddr(r))
 }
 
 type requestLoggerHandler struct {

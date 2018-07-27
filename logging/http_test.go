@@ -88,8 +88,21 @@ func TestHTTPAccessHandler(t *testing.T) {
 			NewRequestLoggerHandler(logger,
 				NewHTTPAccessHandler(h))))
 	r := httptest.NewRequest("GET", "/tenant1/foo?param1=value1", nil)
+	r.RemoteAddr = "1.2.3.4:1234"
+	r.Header.Add("X-Forwarded-For", "119.14.55.14, 119.14.55.15, 119.14.55.16")
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
+
+	r1 := httptest.NewRequest("GET", "/tenant1/foo?param1=value1", nil)
+	r1.RemoteAddr = "1.2.3.4:1234"
+	r1.Header.Add("X-Forwarded-For", "a.b.c.d.e") // xff silently ignore this
+	h.ServeHTTP(w, r1)
+
+	r2 := httptest.NewRequest("GET", "/tenant1/foo?param1=value1", nil)
+	r2.RemoteAddr = "1.2.3.4:1234"
+	r2.Header.Add("X-Forwarded-For", "") // no effect
+	h.ServeHTTP(w, r2)
+
 	s := StopLogCapturing(outC, logWriter)
 
 	assert.Equal(t, w.Code, 200, "Status code not correct")
@@ -102,4 +115,8 @@ func TestHTTPAccessHandler(t *testing.T) {
 	assert.Contains(t, s[0], `"tenant":"tenant1"`)
 	assert.Contains(t, s[0], `"code":200`)
 	assert.Contains(t, s[0], `"responseBytes":9`)
+	assert.Contains(t, s[0], `"realClientIP":"119.14.55.14:1234"`)
+
+	assert.Contains(t, s[1], `"realClientIP":"1.2.3.4:1234"`)
+	assert.Contains(t, s[2], `"realClientIP":"1.2.3.4:1234"`)
 }
