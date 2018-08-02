@@ -9,7 +9,7 @@ import (
 
 	"github.com/sebest/xff"
 
-	"github.com/splunk/ssc-observation/tracing"
+	"cd.splunkdev.com/core-services/ssc-observation/tracing"
 )
 
 // httpAccessHandler logs http access logs

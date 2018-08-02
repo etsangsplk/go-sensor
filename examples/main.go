@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/splunk/ssc-observation/logging"
+	"cd.splunkdev.com/core-services/ssc-observation/logging"
 )
 
 func main() {
