@@ -20,7 +20,8 @@ type httpAccessHandler struct {
 // NewHTTPAccessHandler constructs a new middleware instance for emitting
 // http access logs. This handler uses tracing.OperationIDFrom() to get
 // the operationID from request context. The handler will trace the fields
-// method, operation, code, respoonseBytes, durationMS, path, and rawQuery.
+// method, operation, code, respoonseBytes, durationMS, path, rawQuery,
+// referer and realClientIP.
 func NewHTTPAccessHandler(next http.Handler) http.Handler {
 	return &httpAccessHandler{next: next}
 }
@@ -44,6 +45,7 @@ func (h *httpAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"durationMS", durationStringMS,
 		"path", r.URL.Path,
 		"rawQuery", r.URL.RawQuery,
+		"referer", r.Referer(),
 		"realClientIP", xff.GetRemoteAddr(r))
 }
 

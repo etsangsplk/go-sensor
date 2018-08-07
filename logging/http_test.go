@@ -88,6 +88,7 @@ func TestHTTPAccessHandler(t *testing.T) {
 			NewRequestLoggerHandler(logger,
 				NewHTTPAccessHandler(h))))
 	r := httptest.NewRequest("GET", "/tenant1/foo?param1=value1", nil)
+	r.Header.Add("Referer", "www.referertest.com")
 	r.RemoteAddr = "1.2.3.4:1234"
 	r.Header.Add("X-Forwarded-For", "119.14.55.14, 119.14.55.15, 119.14.55.16")
 	w := httptest.NewRecorder()
@@ -99,6 +100,7 @@ func TestHTTPAccessHandler(t *testing.T) {
 	h.ServeHTTP(w, r1)
 
 	r2 := httptest.NewRequest("GET", "/tenant1/foo?param1=value1", nil)
+	r2.Header.Add("Referer", "abcde") // Will not verify for proper format
 	r2.RemoteAddr = "1.2.3.4:1234"
 	r2.Header.Add("X-Forwarded-For", "") // no effect
 	h.ServeHTTP(w, r2)
@@ -115,8 +117,11 @@ func TestHTTPAccessHandler(t *testing.T) {
 	assert.Contains(t, s[0], `"tenant":"tenant1"`)
 	assert.Contains(t, s[0], `"code":200`)
 	assert.Contains(t, s[0], `"responseBytes":9`)
+	assert.Contains(t, s[0], `"referer":"www.referertest.com"`)
 	assert.Contains(t, s[0], `"realClientIP":"119.14.55.14:1234"`)
 
 	assert.Contains(t, s[1], `"realClientIP":"1.2.3.4:1234"`)
+	assert.Contains(t, s[1], `"referer":""`)
 	assert.Contains(t, s[2], `"realClientIP":"1.2.3.4:1234"`)
+	assert.Contains(t, s[2], `"referer":"abcde"`)
 }
