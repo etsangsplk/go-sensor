@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
+	"cd.splunkdev.com/libraries/go-observation/tracing"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
 var (
@@ -55,7 +55,7 @@ func NewHTTPAccessHandler(next http.Handler) http.Handler {
 }
 
 func (h *httpAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rw := newHTTPResponseWriter(w)
+	rw := tracing.NewHTTPResponseWriter(w)
 	operation := tracing.OperationIDFrom(r.Context())
 	httpRequestsActive.WithLabelValues(r.Method, operation).Inc()
 

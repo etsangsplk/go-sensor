@@ -26,7 +26,7 @@ func NewRequestContextHandler(next http.Handler) http.Handler {
 // ServeHTTP implements the http.Handler interface.
 func (h *requestContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// X-REQUEST-ID is the request ID header supplied by the gateway
-	requestID := r.Header.Get("X-REQUEST-ID")
+	requestID := r.Header.Get(XRequestID)
 	if len(requestID) == 0 {
 		requestID = bson.NewObjectId().Hex()
 	}
