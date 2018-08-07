@@ -2,7 +2,7 @@ package opentracing
 
 import (
 	"context"
-	//"fmt"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,20 +13,24 @@ import (
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/stretchr/testify/assert"
 	//jaeger "github.com/uber/jaeger-client-go"
-	jaegerLogger "github.com/uber/jaeger-client-go/log"
+	// jaegerLogger "github.com/uber/jaeger-client-go/log"
 )
 
+// Test that when we make an outbound http request within a span at client side
+// all the meta data about the downstream service will also be
+// refected in the span at client side.
 func TestOutboundHTTPRequest(t *testing.T) {
-	// Test that as we are sending out a http request, the current span should
-	// annotate that information into the current span.
+	// Initiate a mock tracer and a top level span
 	tracer := mocktracer.New()
-	// Initialize the ctx with a Span to inject.
 	span := tracer.StartSpan("to_inject").(*mocktracer.MockSpan)
 	defer span.Finish()
 
-	// Create a top span with some extra meta data as "baggage" (if you want to propagate to any child spans)
+	// This top span also has some extra meta data as "baggage" to propagate to
+	// any potential children span.
 	span.SetBaggageItem("key1", "value1")
 	span.SetBaggageItem("key2", "value2")
+
+	// Client send a request out to some mock server.
 	req := httptest.NewRequest("GET", "http://test.biz/tenant1/foo?param1=value1", nil)
 
 	// Wrap Span and context
@@ -42,47 +46,36 @@ func TestOutboundHTTPRequest(t *testing.T) {
 	assert.Equal(t, http.MethodGet, tags[string(ext.HTTPMethod)])
 	assert.Contains(t, tags[string(ext.HTTPUrl)], "tenant1/foo")
 	assert.Equal(t, "test.biz", tags[string(ext.PeerHostname)])
+
+	spanCtx := fmt.Sprintf("%#v", span.Context())
+	// MockTracer is not jaeger Tracer so the key is different
+	// So this is important info for splunk app.
+	assert.NotContains(t, spanCtx, `SpanID:""`)
+	assert.Contains(t, spanCtx, `SpanID:`)
+	assert.NotContains(t, spanCtx, `TraceID:""`)
+	assert.Contains(t, spanCtx, `TraceID:`)
+	assert.Contains(t, spanCtx, `"key1":"value1"`)
+	assert.Contains(t, spanCtx, `"key2":"value2"`)
+	assert.Contains(t, spanCtx, `"key2":"value2"`)
 }
 
 func TestNewTracingHttpClientFrom(t *testing.T) {
-	bufferLogger := &jaegerLogger.BytesBufferLogger{}
-	defer bufferLogger.Flush()
-	//reporter := jaeger.NewInMemoryReporter()
+	// Initiate a mock tracer and a top level span
+	tracer := mocktracer.New()
+	span := tracer.StartSpan("to_inject").(*mocktracer.MockSpan)
+	defer span.Finish()
 
-	tracer, closer := NewTracer("ExampleRequestEndToEndTracing", bufferLogger)
-	// Make sure close is called for any resource clean up related to tracer
-	defer closer.Close()
+	// Wrap Span and context
+	topSpanContext := opentracing.ContextWithSpan(context.Background(), span)
 
-	// Create a top span with some extra meta data as "baggage" (if you want to propagate to any child spans)
-	span, topSpanContext := opentracing.StartSpanFromContext(context.Background(), "TestNewTracingHttpClientFrom")
-	span.SetBaggageItem("key1", "value1")
-	span.SetBaggageItem("key2", "value2")
-	//
+	// Test each http api in turn
 	httpClient := NewHTTPClient(topSpanContext, tracer)
 	respGet, errGet := httpClient.Get("http://google.com")
-	// Normal http response resource  closure.
-	defer func() {
-		if respGet != nil {
-			respGet.Body.Close()
-		}
-	}()
-	// Need to log something to span
-	span.LogKV("http", "get")
-	// Try out each Http call
+	// Test HEAD
 	respHead, errHead := httpClient.Head("http://google.com")
-	defer func() {
-		if respHead != nil {
-			respHead.Body.Close()
-		}
-	}()
-	span.LogKV("http", "head")
+	// Test POSTFORM, which also test POST
 	respPostForm, errPostForm := httpClient.PostForm("http://google.com", url.Values{"a": []string{"b"}})
-	defer func() {
-		if respPostForm != nil {
-			respPostForm.Body.Close()
-		}
-	}()
-	span.LogKV("http", "postform")
+
 	assert.NotNil(t, httpClient)
 	assert.NoError(t, errGet)
 	assert.NotNil(t, respGet)
@@ -90,11 +83,14 @@ func TestNewTracingHttpClientFrom(t *testing.T) {
 	assert.NotNil(t, respHead)
 	assert.NoError(t, errPostForm)
 	assert.NotNil(t, respPostForm)
-
 	// clean up resources
 	span.Finish()
-	// reporter.Close()
 
-	//fmt.Printf("spans SpansSubmited %#v\n", reporter.SpansSubmitted())
-	// fmt.Printf("reported spans: %#v\n", reporter.GetSpans())
+	spanCtx := fmt.Sprintf("%#v", span.Context())
+	// MockTracer is not jaeger Tracer so the key is different
+	// So this is important info for splunk app.
+	assert.NotContains(t, spanCtx, `SpanID:""`)
+	assert.Contains(t, spanCtx, `SpanID:`)
+	assert.NotContains(t, spanCtx, `TraceID:""`)
+	assert.Contains(t, spanCtx, `TraceID:`)
 }
