@@ -14,7 +14,6 @@ func main() {
 	ExampleGlobalLogger()
 	ExampleServiceRequestLogger()
 	ExampleNonHttpRequest()
-    ExampleOpentracingExample()
 }
 
 // The global logger is used for code paths that do not have a Context, for
@@ -137,9 +136,4 @@ func ExampleNonHttpRequest() {
 	requestId := "" // let the logger create one
 	ctx := logging.NewRequestContext(context.Background(), requestId)
 	logging.From(ctx).Info("New batch started")
-}
-
-// This is the entry point for examples under opentracing
-func ExampleOpentracingExample() {
-
 }

@@ -86,7 +86,7 @@ type RequestFunc func(req *http.Request) *http.Request
 
 // OutboundHTTPRequest returns a RequestFunc that injects a span so the server serving this rquest
 // will have the information to continue the trace (create child span etc).
-// If no such Span can be found, the RequestFunc is a noop. A new span starts when you make the call.
+// If no such Span can be found, the RequestFunc is a noop.
 func OutboundHTTPRequest(tracer opentracing.Tracer) RequestFunc {
 	return func(req *http.Request) *http.Request {
 		// Retrieve the Span from request context.
@@ -163,6 +163,8 @@ func InboundHTTPRequest(tracer opentracing.Tracer, operationName string, r *http
 // httpOpentracingHandler provides http middleware to construct
 // opentracing trace span.
 type httpOpentracingHandler struct {
+	// tracer
+	// logger
 	next http.Handler
 }
 
@@ -180,7 +182,7 @@ func (h *httpOpentracingHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	tenant := tracing.TenantIDFrom(r.Context())
 	// Assume that there a tracer is already setup by service
 	// defaulted as noop tracer.
-	tracer := GlobalTracer()
+	tracer := Global() //TODO? get from opentracinghandler even it is global  per service?
 	span, err := InboundHTTPRequest(tracer, operationName, r)
 	defer func() {
 		if span != nil {

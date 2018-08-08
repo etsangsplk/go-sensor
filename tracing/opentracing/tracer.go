@@ -32,8 +32,8 @@ func SetGlobalTracer(t Tracer) {
 	opentracing.SetGlobalTracer(t)
 }
 
-// GlobalTracer returns the global tracer. The default is a no-op tracer.
-func GlobalTracer() Tracer {
+// Global returns the global tracer. The default is a no-op tracer.
+func Global() Tracer {
 	return opentracing.GlobalTracer()
 }
 
