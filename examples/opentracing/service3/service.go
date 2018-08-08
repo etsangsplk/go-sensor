@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"sync"
 
@@ -31,8 +30,11 @@ func main() {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go Service(net.JoinHostPort("localhost", "9093"), &wg)
+	go Service(":9093", &wg)
 	wg.Wait()
+
+	logger.Info(fmt.Sprintf("Starting service %s", serviceName))
+
 }
 
 // Simulated microservice A, serving requests.
@@ -41,20 +43,22 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	logger.Info(fmt.Sprintf("Starting service %s", serviceName))
 
 	// Start listening for incoming requests and unblock client
-	listener, err := net.Listen("tcp", hostPort)
-	if err != nil {
-		logger.Fatal(err, fmt.Sprintf("Service %s failed to listen", serviceName))
-	}
-	wg.Done()
+	//listener, err := net.Listen("tcp", hostPort)
+	//if err != nil {
+	//	logger.Fatal(err, fmt.Sprintf("Service %s failed to listen", serviceName))
+	//}
+
 	// Configure Route http requests
 	// Service A operationA calls serviceB then serviceC which errors out at the end
-	http.Handle("/operationC", ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationCHandler)))
-
-	err = http.Serve(listener, nil)
+	http.Handle("/operationC", logging.NewRequestLoggerHandler(logging.Global(),
+		ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationCHandler))))
+	logger.Info("ready for handling requests")
+	err := http.ListenAndServe(hostPort, nil)
+	wg.Done()
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Exiting service %s", serviceName))
 	}
-	logger.Info("ready for handling requests")
+
 }
 
 func operationCHandler(w http.ResponseWriter, r *http.Request) {
@@ -79,4 +83,7 @@ func operationCHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Add event to span
 	childSpan.LogKV("event", "error", "type", "server error", "error", err.Error())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

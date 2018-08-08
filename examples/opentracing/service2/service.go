@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -35,47 +34,37 @@ func main() {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go Service(net.JoinHostPort("localhost", "9092"), &wg)
+	go Service(":9092", &wg)
 	wg.Wait()
 }
 
 func Service(hostPort string, wg *sync.WaitGroup) {
 	logger := logging.Global()
 	logger.Info(fmt.Sprintf("Starting service %s", serviceName))
-
-	// Start listening for incoming requests and unblock client
-	listener, err := net.Listen("tcp", hostPort)
-	if err != nil {
-		logger.Fatal(err, fmt.Sprintf("Service %s failed to listen", serviceName))
-	}
-	wg.Done()
 	// Configure Route http requests
 	// Service A operationA calls serviceB then serviceC which errors out at the end
-	http.Handle("/operationB", ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationBHandler)))
+	http.Handle("/operationB", logging.NewRequestLoggerHandler(logging.Global(),
+		ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationBHandler))))
 
-	err = http.Serve(listener, nil)
+	logger.Info("ready for handling requests")
+	err := http.ListenAndServe(hostPort, nil)
+	wg.Done()
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Exiting service %s", serviceName))
 	}
-	logger.Info("ready for handling requests")
+
 }
 
 func operationBHandler(w http.ResponseWriter, r *http.Request) {
-	// Get tracer for this service
-	tracer := ssctracing.Global()
-
 	// Get the request logger from ctx
 	ctx := r.Context()
 	log := logging.From(ctx)
 	log.Info("Executing operation", "operation", "B")
 
 	// For some reason this operation wants to call a local function
-	//parentContext := opentracing.ContextWithSpan(ctx, parentSpan)
 	// local function will perform a logical unit of work that warrants a span.
 	somelocaloperation(ctx)
 
-	client := ssctracing.NewHTTPClient(ctx, tracer)
-	//
 	// The Http Handler should have created a new span and we just need to add to it.
 	// Add event to the current span
 	span := opentracing.SpanFromContext(ctx)
@@ -83,12 +72,8 @@ func operationBHandler(w http.ResponseWriter, r *http.Request) {
 
 	// This operation sleep some random time and shoukd show in reporter
 	Sleep(time.Duration(1), time.Duration(2))
-
-	client.Post(string("http://"+net.JoinHostPort("localhost", "9093")+"/operationC?param1=value1"), "application/x-www-form-urlencoded", nil)
-	span.LogKV("event", "call service C", "type", "internal service")
 	// Add event to span
 	span.LogKV("event", "delay", "type", "planned deplay")
-
 }
 
 // This function is to show how to propagate the in-process context.
