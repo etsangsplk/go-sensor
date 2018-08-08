@@ -73,11 +73,6 @@ func operationAHandler(w http.ResponseWriter, r *http.Request) {
 	// The Http Handler should have created a new span and we just need to add to it.
 	// Add event to the current span
 	span := opentracing.SpanFromContext(ctx)
-	defer func() {
-		if span != nil {
-			span.Finish()
-		}
-	}()
 
 	resp, err1 := client.Get(string("http://" + net.JoinHostPort("localhost", "9092") + "/operationB?param1=value1"))
 	if err1 != nil {

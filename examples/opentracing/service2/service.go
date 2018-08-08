@@ -60,38 +60,30 @@ func operationBHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logging.From(ctx)
 	log.Info("Executing operation", "operation", "B")
-
-	// For some reason this operation wants to call a local function
-	// local function will perform a logical unit of work that warrants a span.
 	somelocaloperation(ctx)
-
-	// The Http Handler should have created a new span and we just need to add to it.
-	// Add event to the current span
-	span := opentracing.SpanFromContext(ctx)
-	defer span.Finish()
-
-	// This operation sleep some random time and shoukd show in reporter
-	Sleep(time.Duration(1), time.Duration(2))
-	// Add event to span
-	span.LogKV("event", "delay", "type", "planned deplay")
 }
 
 // This function is to show how to propagate the in-process context.
 // The Go stardard library usually use `context.Context`, instead of custom type like Span.
 //
-func somelocaloperation(parentContext context.Context) string {
+func somelocaloperation(ctx context.Context) string {
 	logger := logging.Global()
 
-	childSpan, _ := opentracing.StartSpanFromContext(parentContext, "somelocaloperation")
-	defer childSpan.Finish()
-
-	// The following has nothing to do with ssc logging, and size is not as neglible as
-	// the logging library, so don't treat as such.
-	// These "logs" are actually events related to the span, which this case childSpan.
-	// They will be serialized and sent to the remote reporter.
-	childSpan.LogKV("event", "something useful", "type", "localoperation")
+	// A new span for local function, ignoring the returned context from this
+	// operation for this example, since we are not propogating to another level
+	// in tthis example. But if you do need to propagate, you need to return back and
+	// wrap this as span context and into the request context.
+	span, _ := opentracing.StartSpanFromContext(ctx, "somelocaloperation")
+	defer func() {
+		if span != nil {
+			span.Finish()
+		}
+	}()
 
 	logger.Info("excuted somelocaloperation")
+	// This operation sleep some random time and should show in reporter
+	Sleep(time.Duration(1), time.Duration(2))
+	span.LogKV("event", "delay", "type", "planned deplay")
 	return "someresult"
 }
 

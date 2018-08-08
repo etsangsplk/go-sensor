@@ -53,14 +53,14 @@ curl 'http://localhost:9091/operationA?param1=hi'
 Logs from Service 1, the service that you are hitting, should be something like this:
 
 ```
-{"level":"INFO","time":"2018-08-08T21:26:31.160Z","location":"opentracing/logger.go:31","message":"Initializing logging reporter\n","service":"service1","hostname":"xxx"}
-{"level":"INFO","time":"2018-08-08T21:26:31.161Z","location":"service1/service.go:43","message":"Starting service service1","service":"service1","hostname":"xxx"}
-{"level":"INFO","time":"2018-08-08T21:26:31.161Z","location":"service1/service.go:50","message":"ready for handling requests","service":"service1","hostname":"xxx"}
-{"level":"INFO","time":"2018-08-08T21:26:33.440Z","location":"service1/service.go:68","message":"Executing operation","service":"service1","hostname":"xxx","operation":"A","param1":"hi"}
-{"level":"INFO","time":"2018-08-08T21:26:33.442Z","location":"service1/service.go:89","message":"response code from B","service":"service1","hostname":"xxx","response code":200}
-{"level":"INFO","time":"2018-08-08T21:26:33.443Z","location":"service1/service.go:99","message":"response code from C","service":"service1","hostname":"xxx","response code":500}
-{"level":"INFO","time":"2018-08-08T21:26:33.444Z","location":"opentracing/logger.go:31","message":"Reporting span 70b14061d00ba97d:70b14061d00ba97d:0:1","service":"service1","hostname":"xxx"}
-{"level":"INFO","time":"2018-08-08T21:26:33.444Z","location":"opentracing/logger.go:31","message":"Reporting span 70b14061d00ba97d:70b14061d00ba97d:0:1","service":"service1","hostname":"xxx"}
+{"level":"INFO","time":"2018-08-08T21:47:36.508Z","location":"opentracing/logger.go:31","message":"Initializing logging reporter\n","service":"service1","hostname":"xxx"}
+{"level":"INFO","time":"2018-08-08T21:47:36.509Z","location":"service1/service.go:43","message":"Starting service service1","service":"service1","hostname":"xxx"}
+{"level":"INFO","time":"2018-08-08T21:47:36.509Z","location":"service1/service.go:50","message":"ready for handling requests","service":"service1","hostname":"xxx"}
+{"level":"INFO","time":"2018-08-08T21:47:38.131Z","location":"service1/service.go:68","message":"Executing operation","service":"service1","hostname":"xxx","operation":"A","param1":"hi"}
+{"level":"INFO","time":"2018-08-08T21:47:38.133Z","location":"service1/service.go:89","message":"response code from B","service":"service1","hostname":"xxx","response code":200}
+{"level":"INFO","time":"2018-08-08T21:47:38.134Z","location":"service1/service.go:99","message":"response code from C","service":"service1","hostname":"xxx","response code":500}
+{"level":"INFO","time":"2018-08-08T21:47:38.134Z","location":"opentracing/logger.go:31","message":"Reporting span 265081a2dc8ae62b:265081a2dc8ae62b:0:1","service":"service1","hostname":"xxx"}
+{"level":"INFO","time":"2018-08-08T21:47:38.135Z","location":"opentracing/logger.go:31","message":"Reporting span 265081a2dc8ae62b:265081a2dc8ae62b:0:1","service":"service1","hostname":"xxx"}
 
 ```
 

@@ -70,12 +70,6 @@ func operationCHandler(w http.ResponseWriter, r *http.Request) {
 	// The Http Handler should have created a new span and we just need to add to it.
 	// Add event to the current span
 	childSpan := opentracing.SpanFromContext(ctx)
-	defer func() {
-		if childSpan != nil {
-			childSpan.Finish()
-		}
-	}()
-
 	// This operation will error out and should show in reporter.
 	err := func() error { return fmt.Errorf("failed operationC") }()
 	if err != nil {
