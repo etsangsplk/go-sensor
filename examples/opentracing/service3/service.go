@@ -54,6 +54,7 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Exiting service %s", serviceName))
 	}
+	logger.Info("ready for handling requests")
 }
 
 func operationCHandler(w http.ResponseWriter, r *http.Request) {

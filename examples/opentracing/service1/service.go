@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/cloudfoundry/multierror"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 
 	"github.com/splunk/ssc-observation/logging"
 	ssctracing "github.com/splunk/ssc-observation/tracing/opentracing"
@@ -73,14 +75,11 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Exiting service %s", serviceName))
 	}
+	logger.Info("ready for handling requests")
 }
 
 func operationAHandler(w http.ResponseWriter, r *http.Request) {
-	// Get tracer for this service
-	// tracer := ssctracing.GlobalTracer()
-	// Get upstream context from incoming request
-	// Let's pretend this tracer is created from serivce A.
-	// Usually you just need one tracer per service.
+	errors := multierror.MultiError{}
 
 	param1 := r.URL.Query().Get("param1")
 	// Get the request logger from ctx
@@ -89,6 +88,7 @@ func operationAHandler(w http.ResponseWriter, r *http.Request) {
 	logger := logging.From(ctx)
 	logger.Info("Executing operation", "operation", "A", "param1", param1)
 
+	// Get the tracer for this service
 	tracer := ssctracing.Global()
 	client := ssctracing.NewHTTPClient(ctx, tracer)
 	// The Http Handler should have created a new span and we just need to add to it.
@@ -100,9 +100,32 @@ func operationAHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	client.Get(string("http://" + net.JoinHostPort("localhost", "9092") + "/operationB?param1=value1"))
-	span.LogKV("event", "call service B", "type", "external service")
+	resp, err1 := client.Get(string("http://" + net.JoinHostPort("localhost", "9092") + "/operationB?param1=value1"))
+	if err1 != nil {
+		errors.Add(err1)
+	}
 
-	client.Post(string("http://"+net.JoinHostPort("localhost", "9093")+"/operationC?param1=value1"), "application/x-www-form-urlencoded", nil)
+	span.LogKV("event", "call service B", "type", "external service")
+	if resp != nil {
+		logger.Info("service", "B", "response", resp.StatusCode)
+		ext.HTTPStatusCode.Set(span, uint16(resp.StatusCode))
+	}
+	logger.Error(err1, "error from calling service B")
+
+	resp, err2 := client.Post(string("http://"+net.JoinHostPort("localhost", "9093")+"/operationC?param1=value1"), "application/x-www-form-urlencoded", nil)
+	if err2 != nil {
+		errors.Add(err1)
+	}
 	span.LogKV("event", "call service C", "type", "internal service")
+	if resp != nil {
+		logger.Info("service", "C", "response", resp.StatusCode)
+		ext.HTTPStatusCode.Set(span, uint16(resp.StatusCode))
+	}
+
+	logger.Error(err2, "error from calling service C")
+
+	// we have error
+	if errors.Length() > 0 {
+		ext.Error.Set(span, true)
+	}
 }

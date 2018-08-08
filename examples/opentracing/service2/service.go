@@ -57,6 +57,7 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Exiting service %s", serviceName))
 	}
+	logger.Info("ready for handling requests")
 }
 
 func operationBHandler(w http.ResponseWriter, r *http.Request) {
@@ -77,15 +78,16 @@ func operationBHandler(w http.ResponseWriter, r *http.Request) {
 	//
 	// The Http Handler should have created a new span and we just need to add to it.
 	// Add event to the current span
-	childSpan := opentracing.SpanFromContext(ctx)
+	span := opentracing.SpanFromContext(ctx)
+	defer span.Finish()
 
 	// This operation sleep some random time and shoukd show in reporter
 	Sleep(time.Duration(1), time.Duration(2))
 
 	client.Post(string("http://"+net.JoinHostPort("localhost", "9093")+"/operationC?param1=value1"), "application/x-www-form-urlencoded", nil)
-	childSpan.LogKV("event", "call service C", "type", "internal service")
+	span.LogKV("event", "call service C", "type", "internal service")
 	// Add event to span
-	childSpan.LogKV("event", "delay", "type", "planned deplay")
+	span.LogKV("event", "delay", "type", "planned deplay")
 
 }
 

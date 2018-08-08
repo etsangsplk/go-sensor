@@ -24,6 +24,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/cloudfoundry/multierror"
+  packages = ["."]
+  revision = "dafed03eebc65cdf3de2928e3f94793bc893ede0"
+
+[[projects]]
+  branch = "master"
   name = "github.com/codahale/hdrhistogram"
   packages = ["."]
   revision = "3a0bb77429bd3a61596f5e8a3172445844342120"
@@ -219,6 +225,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b18d3bcaa45c0414e45f885e58655b6ff627441882cc97b7c3430d6247271a0d"
+  inputs-digest = "6db6c6642a42b51cb494c016c67abc2fa5e458449c9d1bac9ebc9a9727ccb2fd"
   solver-name = "gps-cdcl"
   solver-version = 1
