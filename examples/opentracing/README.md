@@ -68,7 +68,7 @@ View trace at backend.
 Then open http://127.0.0.1:8080
 
 Tracing Span
-![alt text](./tracinggui.png?raw=true)
+![alt text](./tracingui.png?raw=true)
 
 Tracing UI
 ![alt text](./tracingspans.png?raw=true)
