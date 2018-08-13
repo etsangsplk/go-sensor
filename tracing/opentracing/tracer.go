@@ -61,7 +61,7 @@ func newTracer(serviceName string, sampler *config.SamplerConfig, reporter *conf
 	cfg := &config.Configuration{
 		Sampler:  sampler,
 		Reporter: reporter,
-		// Override jaegers default of tagging using uber.
+		// Override jaegers default of tagging using "uber".
 		Headers: &jaeger.HeadersConfig{
 			TraceContextHeaderName:   TraceContextSpanTraceIDKey,
 			TraceBaggageHeaderPrefix: TraceBaggageHeaderPrefix,
