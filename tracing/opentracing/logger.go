@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	jaegerLogger "github.com/uber/jaeger-client-go/log"
-	jlog "github.com/uber/jaeger-client-go/log"
 
 	"github.com/splunk/ssc-observation/logging"
 )
@@ -14,7 +13,7 @@ var defaultLogger = jaegerLogger.NullLogger
 // This is a adaptor for ssc logging to jaeger reporter logger.
 // so that same logging format is used.
 type Logger struct {
-	jlog.Logger
+	jaegerLogger.Logger
 	logger *logging.Logger
 }
 

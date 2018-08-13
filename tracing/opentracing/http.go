@@ -2,7 +2,7 @@ package opentracing
 
 import (
 	"fmt"
-    "net"
+	"net"
 	"net/http"
 	"strconv"
 

@@ -22,6 +22,7 @@ import (
 func TestOutboundHTTPRequest(t *testing.T) {
 	// Initiate a mock tracer and a top level span
 	tracer := mocktracer.New()
+	SetGlobalTracer(tracer)
 	span := tracer.StartSpan("to_inject").(*mocktracer.MockSpan)
 	defer span.Finish()
 
@@ -35,7 +36,7 @@ func TestOutboundHTTPRequest(t *testing.T) {
 
 	// Wrap Span and context
 	topSpanContext := opentracing.ContextWithSpan(context.Background(), span)
-	httpClient := NewHTTPClient(topSpanContext, tracer)
+	httpClient := NewHTTPClient(topSpanContext)
 	httpClient.Do(req)
 
 	assert.NotNil(t, span.Tags())
@@ -62,6 +63,7 @@ func TestOutboundHTTPRequest(t *testing.T) {
 func TestNewTracingHttpClientFrom(t *testing.T) {
 	// Initiate a mock tracer and a top level span
 	tracer := mocktracer.New()
+	SetGlobalTracer(tracer)
 	span := tracer.StartSpan("to_inject").(*mocktracer.MockSpan)
 	defer span.Finish()
 
@@ -69,7 +71,7 @@ func TestNewTracingHttpClientFrom(t *testing.T) {
 	topSpanContext := opentracing.ContextWithSpan(context.Background(), span)
 
 	// Test each http api in turn
-	httpClient := NewHTTPClient(topSpanContext, tracer)
+	httpClient := NewHTTPClient(topSpanContext)
 	respGet, errGet := httpClient.Get("http://google.com")
 	// Test HEAD
 	respHead, errHead := httpClient.Head("http://google.com")

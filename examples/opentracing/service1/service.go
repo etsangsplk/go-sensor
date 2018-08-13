@@ -68,11 +68,11 @@ func operationAHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Executing operation", "operation", "A", "param1", param1)
 
 	// Get the tracer for this service
-	tracer := ssctracing.Global()
-	client := ssctracing.NewHTTPClient(ctx, tracer)
+	client := ssctracing.NewHTTPClient(ctx)
 	// The Http Handler should have created a new span and we just need to add to it.
 	// Add event to the current span
 	span := opentracing.SpanFromContext(ctx)
+    span.Finish()
 
 	resp, err1 := client.Get(string("http://" + net.JoinHostPort("localhost", "9092") + "/operationB?param1=value1"))
 	if err1 != nil {
