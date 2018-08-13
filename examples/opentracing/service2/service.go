@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
-
 	"github.com/splunk/ssc-observation/logging"
 	// TODO we need a better name than opentracing --> confusing with the standard one.
 	ssctracing "github.com/splunk/ssc-observation/tracing/opentracing"
@@ -73,7 +71,7 @@ func somelocaloperation(ctx context.Context) string {
 	// operation for this example, since we are not propogating to another level
 	// in tthis example. But if you do need to propagate, you need to return back and
 	// wrap this as span context and into the request context.
-	span, _ := opentracing.StartSpanFromContext(ctx, "somelocaloperation")
+	span, _ := ssctracing.StartSpanFromContext(ctx, "somelocaloperation")
 	defer func() {
 		if span != nil {
 			span.Finish()

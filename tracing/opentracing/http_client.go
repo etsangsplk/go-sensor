@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	// opentracing "github.com/opentracing/opentracing-go"
+	// "golang.org/x/net/context/ctxhttp"
 )
 
 type Client struct {
@@ -24,7 +25,7 @@ func NewHTTPClient(ctx context.Context) *Client {
 		httpClient:     &http.Client{},
 		tracer:         Global(), // assume that there is a tracer already registered.
 	}
-	c.traceRequest = OutboundHTTPRequest(Global())
+	c.traceRequest = OutboundHTTPRequest(c.tracer)
 	return c
 }
 

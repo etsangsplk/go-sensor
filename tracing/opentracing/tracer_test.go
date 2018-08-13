@@ -57,7 +57,6 @@ func TestNewTracerWithTraceLogger(t *testing.T) {
 	span.Finish()
 
 	s := StopLogCapturing(outC, w)
-	fmt.Printf("s: %#v", s)
 	assert.NotNil(t, tracer)
 	// Check that some signs of reporter being initialized and that
 	// a span ie being reported. SpanID is changing so just do inference.

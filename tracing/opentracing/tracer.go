@@ -1,10 +1,12 @@
 package opentracing
 
 import (
+	"context"
 	"fmt"
 	"io"
 
 	opentracing "github.com/opentracing/opentracing-go"
+	//"github.com/opentracing/opentracing-go/ext"
 	jaeger "github.com/uber/jaeger-client-go"
 	config "github.com/uber/jaeger-client-go/config"
 
@@ -71,4 +73,30 @@ func newTracer(serviceName string, sampler *config.SamplerConfig, reporter *conf
 	}
 	return tracer, closer
 
+}
+
+// StartSpan uses Global tracer to create a new Span from operationName.
+func StartSpan(operationName string) opentracing.Span {
+	t := Global()
+	return t.StartSpan(operationName)
+}
+
+// SpanFromContext returns the `Span` previously associated with `ctx`, or
+// `nil` if no such `Span` could be found.
+//
+// NOTE: context.Context != SpanContext: the former is Go's intra-process
+// context propagation mechanism, and the latter houses OpenTracing's per-Span
+// identity and baggage information.
+func SpanFromContext(ctx context.Context) opentracing.Span {
+	return opentracing.SpanFromContext(ctx)
+}
+
+// StartSpanFromContext starts and returns a Span with `operationName`, using
+// any Span found within `ctx` as a ChildOfRef. If no such parent could be
+// found, StartSpanFromContext creates a root (parentless) Span.
+//
+// The second return value is a context.Context object built around the
+// returned Span.
+func StartSpanFromContext(ctx context.Context, operationName string) (opentracing.Span, context.Context) {
+	return opentracing.StartSpanFromContext(ctx, operationName)
 }
