@@ -7,6 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/splunk/ssc-observation/tracing"
 )
 
@@ -55,7 +56,7 @@ func NewHTTPAccessHandler(next http.Handler) *httpAccessHandler {
 }
 
 func (h *httpAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rw := newHTTPResponseWriter(w)
+	rw := tracing.NewHTTPResponseWriter(w)
 	operation := tracing.OperationIDFrom(r.Context())
 	httpRequestsActive.WithLabelValues(r.Method, operation).Inc()
 

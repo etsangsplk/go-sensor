@@ -3,9 +3,13 @@ package opentracing
 import (
 	"fmt"
 
-	"github.com/splunk/ssc-observation/logging"
+	jaegerLogger "github.com/uber/jaeger-client-go/log"
 	jlog "github.com/uber/jaeger-client-go/log"
+
+	"github.com/splunk/ssc-observation/logging"
 )
+
+var defaultLogger = jaegerLogger.NullLogger
 
 // This is a adaptor for ssc logging to jaeger reporter logger.
 // so that same logging format is used.

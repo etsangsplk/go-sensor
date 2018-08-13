@@ -7,6 +7,8 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/splunk/ssc-observation/tracing"
 )
 
 // Constants for standard key names
@@ -19,11 +21,11 @@ const (
 	LevelKey     = "level"
 	LocationKey  = "location"
 	MessageKey   = "message"
-	RequestIdKey = "requestId" // Deprecated: use RequestIDKey
-	RequestIDKey = "requestId"
+	RequestIdKey = tracing.RequestIdKey
+	RequestIDKey = tracing.RequestIDKey
 	ServiceKey   = "service"
 	TimeKey      = "time"
-	TenantKey    = "tenant"
+	TenantKey    = tracing.TenantKey
 	UrlKey       = "url" // Deprecated: use URLKey
 	URLKey       = "url"
 )

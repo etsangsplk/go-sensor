@@ -7,7 +7,8 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	jaeger "github.com/uber/jaeger-client-go"
 	config "github.com/uber/jaeger-client-go/config"
-	jaegerLogger "github.com/uber/jaeger-client-go/log"
+
+	"github.com/splunk/ssc-observation/logging"
 )
 
 const (
@@ -16,12 +17,8 @@ const (
 )
 
 type Tracer opentracing.Tracer
-type TraceLogger jaegerLogger.Logger
 
-var (
-	defaultLogger = jaegerLogger.NullLogger
-	globalTracer  = &opentracing.NoopTracer{}
-)
+var globalTracer = &opentracing.NoopTracer{}
 
 // SetGlobalTracer sets the global logger.
 // By default tracer is a no-op tracer. Passing nil tracer will panic.
@@ -42,7 +39,7 @@ func Global() Tracer {
 // It sends all spans to reporter and writes the reported spans to logger.
 // You need 1 global tracer per microservice.
 // It also returns a closer func to be used to flush buffers before shutdown.
-func NewTracer(serviceName string, logger TraceLogger) (Tracer, io.Closer) {
+func NewTracer(serviceName string, logger *logging.Logger) (Tracer, io.Closer) {
 	sampler := &config.SamplerConfig{
 		Type:  "const",
 		Param: 1, // This reports 100%. Need to let user choose. Functional Options?
@@ -57,7 +54,8 @@ func NewTracer(serviceName string, logger TraceLogger) (Tracer, io.Closer) {
 // newTracer returns an instance of Tracer associated with serviceName.
 // It also allows configuration for sampler to only subet of spans out, reporter for different types of reporters.
 // It also returns a closer func to be used to flush buffers before shutdown.
-func newTracer(serviceName string, sampler *config.SamplerConfig, reporter *config.ReporterConfig, logger TraceLogger) (Tracer, io.Closer) {
+func newTracer(serviceName string, sampler *config.SamplerConfig, reporter *config.ReporterConfig, logger *logging.Logger) (Tracer, io.Closer) {
+	log := NewLogger(logger)
 	cfg := &config.Configuration{
 		Sampler:  sampler,
 		Reporter: reporter,
@@ -67,7 +65,7 @@ func newTracer(serviceName string, sampler *config.SamplerConfig, reporter *conf
 			TraceBaggageHeaderPrefix: TraceBaggageHeaderPrefix,
 		},
 	}
-	tracer, closer, err := cfg.New(serviceName, config.Logger(logger))
+	tracer, closer, err := cfg.New(serviceName, config.Logger(log))
 	if err != nil {
 		panic(fmt.Sprintf("cannot init Jaeger error: %v\n", err))
 	}

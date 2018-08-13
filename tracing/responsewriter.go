@@ -1,8 +1,11 @@
-package opentracing
+package tracing
 
 import (
 	"net/http"
 )
+
+// Note, there are duplicate copies of this in /logging/responsewriter.go and /metrics/responsewriter.go
+// Ultimately it should go in /tracing but is kept here private until the interface stabilizes.
 
 // ResponseWriter implements the http.ResponseWriter interface.
 // It is used to capture the response status code.
@@ -12,7 +15,7 @@ type httpResponseWriter struct {
 	statusCode    int
 }
 
-func newHTTPResponseWriter(w http.ResponseWriter) *httpResponseWriter {
+func NewHTTPResponseWriter(w http.ResponseWriter) *httpResponseWriter {
 	return &httpResponseWriter{w: w}
 }
 

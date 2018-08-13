@@ -115,11 +115,12 @@ func OutboundHTTPRequest(tracer opentracing.Tracer) RequestFunc {
 
 			// Inject the Span context into the outgoing HTTP Request.
 			// Sicne we are sending an HTTP request, will use the HTTP headers as carrier.
-			if err := tracer.Inject(
+			err = tracer.Inject(
 				span.Context(),
 				opentracing.HTTPHeaders,
 				opentracing.HTTPHeadersCarrier(req.Header),
-			); err != nil {
+			)
+			if err != nil {
 				// Indicate span resulted in failed operation.
 				ext.Error.Set(span, true)
 				logger := logging.Global()
@@ -144,17 +145,17 @@ func InboundHTTPRequest(tracer opentracing.Tracer, operationName string, r *http
 		return nil, err
 	}
 	// Attach to parent span
-	//parentSpanReference := opentracing.ChildOf(parentSpanContext)
+	// parentSpanReference := opentracing.ChildOf(parentSpanContext)
 	// Create child span from incoming request
 	span := tracer.StartSpan(operationName, ext.RPCServerOption(parentSpanContext))
 	ext.HTTPMethod.Set(span, r.Method)
 	ext.HTTPUrl.Set(span, r.URL.String())
 
 	// These two items will flow to the child span
-	reqID := span.BaggageItem(logging.RequestIDKey)
-	tenant := span.BaggageItem(logging.TenantKey)
-	span.LogKV(logging.RequestIDKey, reqID)
-	span.LogKV(logging.TenantKey, tenant)
+	reqID := span.BaggageItem(tracing.RequestIDKey)
+	tenant := span.BaggageItem(tracing.TenantKey)
+	span.LogKV(tracing.RequestIDKey, reqID)
+	span.LogKV(tracing.TenantKey, tenant)
 
 	// update request context to include our opentracing context
 	return span, nil
@@ -176,7 +177,7 @@ func NewHTTPOpentracingHandler(next http.Handler) http.Handler {
 }
 
 func (h *httpOpentracingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rw := newHTTPResponseWriter(w)
+	rw := tracing.NewHTTPResponseWriter(w)
 	operationName := tracing.OperationIDFrom(r.Context())
 	reqId := tracing.RequestIDFrom(r.Context())
 	tenant := tracing.TenantIDFrom(r.Context())
@@ -194,12 +195,12 @@ func (h *httpOpentracingHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		logger.Error(err, "error extract span from request")
 	}
 	// Tagging the current span
-	span.SetTag(logging.RequestIDKey, reqId)
-	span.SetTag(logging.TenantKey, tenant)
+	span.SetTag(tracing.RequestIDKey, reqId)
+	span.SetTag(tracing.TenantKey, tenant)
 
 	// These two items will flow to the child span
-	span = span.SetBaggageItem(logging.RequestIDKey, reqId)
-	span = span.SetBaggageItem(logging.TenantKey, tenant)
+	span = span.SetBaggageItem(tracing.RequestIDKey, reqId)
+	span = span.SetBaggageItem(tracing.TenantKey, tenant)
 
 	r = r.WithContext(opentracing.ContextWithSpan(r.Context(), span))
 	// serve the real operation.

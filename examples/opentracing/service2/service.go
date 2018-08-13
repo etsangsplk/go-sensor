@@ -28,7 +28,7 @@ func main() {
 	logging.SetGlobalLogger(logger)
 
 	// Create, set tracer and bind tracer to service name
-	tracer, closer := ssctracing.NewTracer(serviceName, ssctracing.NewLogger(logger))
+	tracer, closer := ssctracing.NewTracer(serviceName, logger)
 	defer closer.Close()
 	ssctracing.SetGlobalTracer(tracer)
 

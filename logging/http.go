@@ -28,7 +28,7 @@ func NewHTTPAccessHandler(next http.Handler) http.Handler {
 
 // ServeHTTP implements http.Handler interface
 func (h *httpAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rw := newHTTPResponseWriter(w)
+	rw := tracing.NewHTTPResponseWriter(w)
 	start := time.Now()
 	h.next.ServeHTTP(rw, r)
 	duration := time.Since(start)
