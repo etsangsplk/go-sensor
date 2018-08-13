@@ -41,12 +41,6 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	logger := logging.Global()
 	logger.Info(fmt.Sprintf("Starting service %s", serviceName))
 
-	// Start listening for incoming requests and unblock client
-	//listener, err := net.Listen("tcp", hostPort)
-	//if err != nil {
-	//	logger.Fatal(err, fmt.Sprintf("Service %s failed to listen", serviceName))
-	//}
-
 	// Configure Route http requests
 	// Service A operationA calls serviceB then serviceC which errors out at the end
 	http.Handle("/operationC", logging.NewRequestLoggerHandler(logging.Global(),
