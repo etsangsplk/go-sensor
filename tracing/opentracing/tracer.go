@@ -67,7 +67,7 @@ func newTracer(serviceName string, sampler *config.SamplerConfig, reporter *conf
 	}
 	tracer, closer, err := cfg.New(serviceName, config.Logger(log))
 	if err != nil {
-		panic(fmt.Sprintf("cannot init Jaeger error: %v\n", err))
+		panic(fmt.Sprintf("cannot init Jaeger client error: %v\n", err))
 	}
 	return tracer, closer
 
