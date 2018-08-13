@@ -59,6 +59,8 @@ func TestNewTracerWithTraceLogger(t *testing.T) {
 	s := StopLogCapturing(outC, w)
 	fmt.Printf("s: %#v", s)
 	assert.NotNil(t, tracer)
+	// Check that some signs of reporter being initialized and that
+	// a span ie being reported. SpanID is changing so just do inference.
 	assert.Contains(t, s[0], `"message":"Initializing logging reporter\n"`)
 	assert.Contains(t, s[0], `"service":"testlogger"`)
 }
@@ -96,6 +98,8 @@ func TestNewTracerWithSamplerReporter(t *testing.T) {
 	assert.Contains(t, spanCtx, `spanID:`)
 	// This is the first span, so got no parentID.
 	assert.Contains(t, spanCtx, `parentID:0x0`)
+	// Check that some signs of reporter being initialized and that
+	// a span ie being reported. SpanID is changing so just do inference.
 	assert.Contains(t, s[0], `"message":"Initializing logging reporter\n"`)
 	assert.Contains(t, s[0], `"service":"testlogger"`)
 }
