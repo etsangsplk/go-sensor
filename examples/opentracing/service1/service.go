@@ -74,33 +74,55 @@ func operationAHandler(w http.ResponseWriter, r *http.Request) {
 	// Add event to the current span
 	span := ssctracing.SpanFromContext(ctx)
 
-	resp, err1 := client.Get(string("http://" + net.JoinHostPort("localhost", "9092") + "/operationB?param1=value1"))
+	resp1, _ := client.Get(string("http://" + net.JoinHostPort("localhost", "9092") + "/operationB?param1=value1"))
+	defer func() {
+		if resp1 != nil {
+			resp1.Body.Close()
+		}
+	}()
+
+	// Lets assume a http response that is not StatusOK results an error
+	err1 := isStatusNOK(resp1.StatusCode)
 	if err1 != nil {
 		errors.Add(err1)
 	}
 
 	span.LogKV("event", "call service B", "type", "external service")
-	if resp != nil {
-		logger.Info("response code from B", "response code", resp.StatusCode)
-		ext.HTTPStatusCode.Set(span, uint16(resp.StatusCode))
+	if resp1 != nil {
+		logger.Info("response code from B", "response code", resp1.StatusCode)
 	}
 
-	resp, err2 := client.Post(string("http://"+net.JoinHostPort("localhost", "9093")+"/operationC?param1=value1"), "application/x-www-form-urlencoded", nil)
+	resp2, _ := client.Post(string("http://"+net.JoinHostPort("localhost", "9093")+"/operationC?param1=value1"), "application/x-www-form-urlencoded", nil)
+	defer func() {
+		if resp2 != nil {
+			resp2.Body.Close()
+		}
+	}()
+
+	// Lets assume a http response that is not StatusOK results an error
+	err2 := isStatusNOK(resp2.StatusCode)
 	if err2 != nil {
-		errors.Add(err1)
+		errors.Add(err2)
 	}
+
 	span.LogKV("event", "call service C", "type", "internal service")
-	if resp != nil {
-		logger.Info("response code from C", "response code", resp.StatusCode)
-		ext.HTTPStatusCode.Set(span, uint16(resp.StatusCode))
+	if resp2 != nil {
+		logger.Info("response code from C", "response code", resp2.StatusCode)
 	}
 
 	// we have error from any of the calls.
 	if errors.Length() > 0 {
 		ext.Error.Set(span, true)
-		ext.HTTPStatusCode.Set(span, uint16(http.StatusInternalServerError))
+		w.WriteHeader(http.StatusInternalServerError)
 		http.Error(w, errors.Error(), http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
 	}
-	// else Ok.
-	ext.HTTPStatusCode.Set(span, uint16(http.StatusOK))
+}
+
+func isStatusNOK(statusCode int) error {
+	if statusCode != http.StatusOK {
+		return fmt.Errorf(http.StatusText(statusCode))
+	}
+	return nil
 }

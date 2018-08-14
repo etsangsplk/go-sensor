@@ -7,9 +7,20 @@ to view the traces.
 ## Example
 There are 3 microservices involved: service1, service2 and service3. All services are on localhost and listen to 9091, 9092, and 9093 respectively.
 
-Service1 will also spawn a server and also acts as client to call on itself on operationA, OperationA will call service2 and service3 to finish the request. service2 will call  a local function to inside its handler.
+Service1: api-gateway service where all external http request will hit.
+Service2: customer-catalog service. It will query a fake database to fulfill its operation.
+Service3: fulfillment service. It is a fake order fulfillment service called by api-gateway after customer-catalog.
 
-The final tracing span should show the top span when client make the call, as the request travels each microservice, a new span should be created when the subsequent service handles the request. The local function call should also be another span.
+The fake database will experience some arbitrary delay.
+Fulfillment service will result an internal server error. 
+
+The final tracing span should show that how a request goes through each service and because some crucial step has failed,
+the whole span should marked as failed.
+When a request is made to a peer service a new span is created. If a an operation calls some location function that is crucial
+in fufilling the operation (e.g. a database call), a new span is created. If the local function is not useful to fulfillment of 
+the operation, no new span is created (e.g. print to a screen)
+
+A span is tagged with notable events that happened in the span.
 
 ## Running
 

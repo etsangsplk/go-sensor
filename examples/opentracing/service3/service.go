@@ -51,7 +51,6 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Exiting service %s", serviceName))
 	}
-
 }
 
 func operationCHandler(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +70,9 @@ func operationCHandler(w http.ResponseWriter, r *http.Request) {
 	// Add event to span
 	childSpan.LogKV("event", "error", "type", "server error", "error", err.Error())
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
 	}
 }

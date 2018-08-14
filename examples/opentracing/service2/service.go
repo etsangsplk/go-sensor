@@ -62,7 +62,9 @@ func operationBHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info("Executing operation", "operation", "B")
 	tenantID := tracing.TenantIDFrom(ctx)
 	ret := queryDatabase(ctx, fmt.Sprintf("SELECT tenant from Customer where tenantID=%v", tenantID))
+	notifySubscriber(ctx, ret)
 	w.Write([]byte(ret))
+	w.WriteHeader(http.StatusOK)
 }
 
 // queryDatabase queries a fake database for some data that is crucial for completion of operation.
@@ -88,7 +90,7 @@ func queryDatabase(ctx context.Context, statment string) string {
 	span.SetTag("sql.query", statment)
 	// This operation sleep some random time and should show in reporter
 	Sleep(time.Duration(1), time.Duration(2))
-	span.LogKV("event", "delay", "type", "planned deplay")
+	span.LogKV("event", "delay", "type", "planned db delay")
 	return "someresult"
 }
 
@@ -100,14 +102,10 @@ func queryDatabase(ctx context.Context, statment string) string {
 // ssc logging to a file.
 func notifySubscriber(ctx context.Context, result string) error {
 	logger := logging.Global()
-	// A new span for local function, ignoring the returned context from this
-	// operation for this example, since we are not propogating to another level
-	// in tthis example. But if you do need to propagate, you need to return back and
-	// wrap this as span context and into the request context.
 	span := ssctracing.SpanFromContext(ctx)
 	ret := "notify_with_result"
 	err := func() error {
-		fmt.Printf("Notifying subscriber of result: %v", ret)
+		logger.Info("notifying subscriber", "result", ret)
 		return fmt.Errorf("server connected disconnected too many times")
 	}()
 	span.LogKV("event", "error", "message", err.Error())
