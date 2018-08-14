@@ -19,12 +19,12 @@ type Client struct {
 
 // NewRequest returns a new request from upstream ctx context.
 func NewRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
-    req, err := http.NewRequest(http.MethodPost, url, body)
-    if err != nil {
-        return nil, err
-    }
-    //req = outBoundHTTPRequest(req.WithContext(ctx))
-    return req, err
+	req, err := http.NewRequest(http.MethodPost, url, body)
+	if err != nil {
+		return nil, err
+	}
+	//req = outBoundHTTPRequest(req.WithContext(ctx))
+	return req, err
 }
 
 // NewHTTPClient returns a new client instance from upstream ctx context.
@@ -35,7 +35,7 @@ func NewHTTPClient(ctx context.Context) *Client {
 		httpClient:     &http.Client{},
 		tracer:         Global(), // assume that there is a tracer already registered.
 	}
-	c.traceRequest = OutboundHTTPRequest()
+	c.traceRequest = outboundHTTPRequest()
 	return c
 }
 
