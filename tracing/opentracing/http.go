@@ -17,14 +17,10 @@ import (
 	"github.com/splunk/ssc-observation/tracing"
 )
 
-// RequestFunc is a function to inject outgoing HTTP request data to the initiating span,
-// so that the initiating span can choose to tag about information like peer service hostname etc.
-type RequestFunc func(req *http.Request) *http.Request
-
 // OutboundHTTPRequest returns a RequestFunc that injects a span so the server serving this rquest
 // will have the information to continue the trace (create child span etc).
 // If no such Span can be found, the RequestFunc is a noop.
-func outboundHTTPRequest() RequestFunc {
+func outboundHTTPRequest() func(req *http.Request) *http.Request {
 	return func(req *http.Request) *http.Request {
 		// Retrieve the Span from request context.
 		ctx := req.Context()
@@ -69,6 +65,51 @@ func outboundHTTPRequest() RequestFunc {
 		}
 		return req
 	}
+}
+
+func annotateOutboundRequest(req *http.Request) *http.Request {
+	// Retrieve the Span from request context.
+	ctx := req.Context()
+	// This does not create a new Span.
+	span := opentracing.SpanFromContext(ctx)
+	if span != nil {
+		// We are going to use this span in a client request, so mark as such.
+		tag.SpanKindRPCClient.Set(span)
+		// Add some standard OpenTracing tags, useful in an HTTP request.
+		tag.HTTPMethod.Set(span, req.Method)
+		tag.HTTPUrl.Set(
+			span,
+			fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.URL.Host, req.URL.Path),
+		)
+
+		// Add information on the peer service we're about to contact.
+		host, portString, err := net.SplitHostPort(req.URL.Host)
+		if err == nil {
+			tag.PeerHostname.Set(span, host)
+			if port, err := strconv.Atoi(portString); err != nil {
+				tag.PeerPort.Set(span, uint16(port))
+			}
+		} else {
+			tag.PeerHostname.Set(span, req.URL.Host)
+		}
+
+		// Inject the Span context into the outgoing HTTP Request.
+		// Sicne we are sending an HTTP request, will use the HTTP headers as carrier.
+		tracer := Global()
+		err = tracer.Inject(
+			span.Context(),
+			opentracing.HTTPHeaders,
+			opentracing.HTTPHeadersCarrier(req.Header),
+		)
+		if err != nil {
+			// Indicate span resulted in failed operation.
+			// We are just marking the Span as failed. The real request will still continue.
+			tag.Error.Set(span, true)
+		}
+		spanCtx := opentracing.ContextWithSpan(ctx, span)
+		req = req.WithContext(spanCtx)
+	}
+	return req
 }
 
 // inboundHTTPRequest .

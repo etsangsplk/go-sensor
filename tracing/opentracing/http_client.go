@@ -14,7 +14,7 @@ type Client struct {
 	httpClient     *http.Client
 	requestContext context.Context
 	tracer         Tracer
-	traceRequest   RequestFunc // Request wrapper
+	traceRequest   func(req *http.Request) *http.Request // Request wrapper
 }
 
 // NewRequest returns a new request from upstream ctx context.
@@ -23,7 +23,7 @@ func NewRequest(ctx context.Context, method string, url string, body io.Reader) 
 	if err != nil {
 		return nil, err
 	}
-	//req = outBoundHTTPRequest(req.WithContext(ctx))
+	req = annotateOutboundRequest(req.WithContext(ctx))
 	return req, err
 }
 
