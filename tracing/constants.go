@@ -5,5 +5,5 @@ const (
 	RequestIdKey = "requestId" // Deprecated: use RequestIDKey
 	RequestIDKey = "requestId"
 	TenantKey    = "tenant"
-    XRequestID   = "X-REQUEST-ID"
+	XRequestID   = "X-REQUEST-ID"
 )

@@ -11,7 +11,7 @@ import (
 	ssctracing "github.com/splunk/ssc-observation/tracing/opentracing"
 )
 
-const serviceName = "service3"
+const serviceName = "fulfillment"
 
 func main() {
 	// Routine initialization of logger and tracer

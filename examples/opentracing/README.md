@@ -46,7 +46,7 @@ When a service is running you should see something like these:
 Make a call to service1.
 
 ```
-curl 'http://localhost:9091/operationA?param1=hi'
+curl --header "X-Request-ID:12345" 'http://localhost:9091/tenant1/operationA?param1=hi'
 
 ```
 

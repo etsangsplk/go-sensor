@@ -11,10 +11,11 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 
 	"github.com/splunk/ssc-observation/logging"
+	"github.com/splunk/ssc-observation/tracing"
 	ssctracing "github.com/splunk/ssc-observation/tracing/opentracing"
 )
 
-const serviceName = "service1"
+const serviceName = "api-gateway"
 
 func main() {
 	// Routine initialization of logger and tracer
@@ -43,8 +44,9 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 
 	// Configure Route http requests
 	// Service A operationA calls serviceB then serviceC which errors out at the end
-	http.Handle("/operationA", logging.NewRequestLoggerHandler(logging.Global(),
-		ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationAHandler))))
+	http.Handle("/tenant1/operationA", logging.NewRequestLoggerHandler(logging.Global(),
+		tracing.NewRequestContextHandler(
+			ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationAHandler)))))
 
 	logger.Info("ready for handling requests")
 	err := http.ListenAndServe(hostPort, nil)
@@ -93,9 +95,12 @@ func operationAHandler(w http.ResponseWriter, r *http.Request) {
 		ext.HTTPStatusCode.Set(span, uint16(resp.StatusCode))
 	}
 
-	// we have error
+	// we have error from any of the calls.
 	if errors.Length() > 0 {
 		ext.Error.Set(span, true)
+		ext.HTTPStatusCode.Set(span, uint16(http.StatusInternalServerError))
 		http.Error(w, errors.Error(), http.StatusInternalServerError)
 	}
+	// else Ok.
+	ext.HTTPStatusCode.Set(span, uint16(http.StatusOK))
 }

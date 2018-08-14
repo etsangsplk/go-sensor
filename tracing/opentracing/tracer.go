@@ -6,7 +6,7 @@ import (
 	"io"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	//"github.com/opentracing/opentracing-go/ext"
+	tag "github.com/opentracing/opentracing-go/ext"
 	jaeger "github.com/uber/jaeger-client-go"
 	config "github.com/uber/jaeger-client-go/config"
 
@@ -19,6 +19,7 @@ const (
 )
 
 type Tracer opentracing.Tracer
+type SpanKindEnum tag.SpanKindEnum
 
 var globalTracer = &opentracing.NoopTracer{}
 
@@ -82,7 +83,7 @@ func StartSpan(operationName string) opentracing.Span {
 }
 
 // SpanFromContext returns the `Span` previously associated with `ctx`, or
-// `nil` if no such `Span` could be found.
+// `nil` if no such `Span` could be found. No new span will be created.
 //
 // NOTE: context.Context != SpanContext: the former is Go's intra-process
 // context propagation mechanism, and the latter houses OpenTracing's per-Span

@@ -1,13 +1,14 @@
 package opentracing
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
 	"strconv"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
+	tag "github.com/opentracing/opentracing-go/ext"
 
 	// Because of referencing logging to get the requestID etc,
 	// to avoid (import cycle), I now put everything under opentracing folder
@@ -27,13 +28,14 @@ func OutboundHTTPRequest(tracer opentracing.Tracer) RequestFunc {
 	return func(req *http.Request) *http.Request {
 		// Retrieve the Span from request context.
 		ctx := req.Context()
+		// This does not create a new Span.
 		span := opentracing.SpanFromContext(ctx)
 		if span != nil {
 			// We are going to use this span in a client request, so mark as such.
-			ext.SpanKindRPCClient.Set(span)
+			tag.SpanKindRPCClient.Set(span)
 			// Add some standard OpenTracing tags, useful in an HTTP request.
-			ext.HTTPMethod.Set(span, req.Method)
-			ext.HTTPUrl.Set(
+			tag.HTTPMethod.Set(span, req.Method)
+			tag.HTTPUrl.Set(
 				span,
 				fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.URL.Host, req.URL.Path),
 			)
@@ -41,12 +43,12 @@ func OutboundHTTPRequest(tracer opentracing.Tracer) RequestFunc {
 			// Add information on the peer service we're about to contact.
 			host, portString, err := net.SplitHostPort(req.URL.Host)
 			if err == nil {
-				ext.PeerHostname.Set(span, host)
+				tag.PeerHostname.Set(span, host)
 				if port, err := strconv.Atoi(portString); err != nil {
-					ext.PeerPort.Set(span, uint16(port))
+					tag.PeerPort.Set(span, uint16(port))
 				}
 			} else {
-				ext.PeerHostname.Set(span, req.URL.Host)
+				tag.PeerHostname.Set(span, req.URL.Host)
 			}
 
 			// Inject the Span context into the outgoing HTTP Request.
@@ -58,9 +60,8 @@ func OutboundHTTPRequest(tracer opentracing.Tracer) RequestFunc {
 			)
 			if err != nil {
 				// Indicate span resulted in failed operation.
-				ext.Error.Set(span, true)
-				logger := logging.Global()
-				logger.Error(err, "error inject span to request")
+				// We are just marking the Span as failed. The real request will still continue.
+				tag.Error.Set(span, true)
 			}
 			spanCtx := opentracing.ContextWithSpan(ctx, span)
 			req = req.WithContext(spanCtx)
@@ -70,7 +71,11 @@ func OutboundHTTPRequest(tracer opentracing.Tracer) RequestFunc {
 }
 
 // InboundHTTPRequest .
-func InboundHTTPRequest(tracer opentracing.Tracer, operationName string, r *http.Request) (opentracing.Span, error) {
+func InboundHTTPRequest(operationName string, r *http.Request) (opentracing.Span, error) {
+	// Assume that there a tracer is already setup by service
+	// defaulted as noop tracer.
+	tracer := Global()
+
 	// Recreate parent spancontext for child span creation.
 	parentSpanContext, err := tracer.Extract(
 		opentracing.HTTPHeaders,
@@ -80,18 +85,11 @@ func InboundHTTPRequest(tracer opentracing.Tracer, operationName string, r *http
 	if err != nil && err != opentracing.ErrSpanContextNotFound {
 		return nil, err
 	}
-	// Attach to parent span
-	// parentSpanReference := opentracing.ChildOf(parentSpanContext)
+	// Attach to parent span.
 	// Create child span from incoming request
-	span := tracer.StartSpan(operationName, ext.RPCServerOption(parentSpanContext))
-	ext.HTTPMethod.Set(span, r.Method)
-	ext.HTTPUrl.Set(span, r.URL.String())
-
-	// These two items will flow to the child span
-	reqID := span.BaggageItem(tracing.RequestIDKey)
-	tenant := span.BaggageItem(tracing.TenantKey)
-	span.LogKV(tracing.RequestIDKey, reqID)
-	span.LogKV(tracing.TenantKey, tenant)
+	span := tracer.StartSpan(operationName, tag.RPCServerOption(parentSpanContext), opentracing.ChildOf(parentSpanContext))
+	tag.HTTPMethod.Set(span, r.Method)
+	tag.HTTPUrl.Set(span, r.URL.String())
 
 	// update request context to include our opentracing context
 	return span, nil
@@ -112,13 +110,11 @@ func NewHTTPOpentracingHandler(next http.Handler) http.Handler {
 
 func (h *httpOpentracingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rw := tracing.NewHTTPResponseWriter(w)
-	operationName := tracing.OperationIDFrom(r.Context())
-	reqId := tracing.RequestIDFrom(r.Context())
-	tenant := tracing.TenantIDFrom(r.Context())
-	// Assume that there a tracer is already setup by service
-	// defaulted as noop tracer.
-	tracer := Global()
-	span, err := InboundHTTPRequest(tracer, operationName, r)
+
+	ctx := r.Context()
+	operationName := tracing.OperationIDFrom(ctx)
+
+	span, err := InboundHTTPRequest(operationName, r)
 	defer func() {
 		if span != nil {
 			span.Finish()
@@ -128,16 +124,19 @@ func (h *httpOpentracingHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		logger := logging.Global()
 		logger.Error(err, "error extract span from request")
 	}
-	// Tagging the current span
-	span.SetTag(tracing.RequestIDKey, reqId)
-	span.SetTag(tracing.TenantKey, tenant)
 
-	// These two items will flow to the child span
-	span = span.SetBaggageItem(tracing.RequestIDKey, reqId)
-	span = span.SetBaggageItem(tracing.TenantKey, tenant)
+	tagCurrentSpan(ctx, span)
 
 	r = r.WithContext(opentracing.ContextWithSpan(r.Context(), span))
 	// serve the real operation.
 	h.next.ServeHTTP(rw, r)
-	ext.HTTPStatusCode.Set(span, uint16(rw.StatusCode()))
+	tag.HTTPStatusCode.Set(span, uint16(rw.StatusCode()))
+}
+
+// Tag the current span with addtitional information extracted from current http request context.
+func tagCurrentSpan(ctx context.Context, span opentracing.Span) {
+	reqId := tracing.RequestIDFrom(ctx)
+	tenant := tracing.TenantIDFrom(ctx)
+	span.SetTag(tracing.RequestIDKey, reqId)
+	span.SetTag(tracing.TenantKey, tenant)
 }
