@@ -100,8 +100,6 @@ func InboundHTTPRequest(tracer opentracing.Tracer, operationName string, r *http
 // httpOpentracingHandler provides http middleware to construct
 // opentracing trace span.
 type httpOpentracingHandler struct {
-	// tracer
-	// logger
 	next http.Handler
 }
 
@@ -119,7 +117,7 @@ func (h *httpOpentracingHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	tenant := tracing.TenantIDFrom(r.Context())
 	// Assume that there a tracer is already setup by service
 	// defaulted as noop tracer.
-	tracer := Global() //TODO? get from opentracinghandler even it is global  per service?
+	tracer := Global()
 	span, err := InboundHTTPRequest(tracer, operationName, r)
 	defer func() {
 		if span != nil {

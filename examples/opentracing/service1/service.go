@@ -71,7 +71,6 @@ func operationAHandler(w http.ResponseWriter, r *http.Request) {
 	// The Http Handler should have created a new span and we just need to add to it.
 	// Add event to the current span
 	span := ssctracing.SpanFromContext(ctx)
-	span.Finish()
 
 	resp, err1 := client.Get(string("http://" + net.JoinHostPort("localhost", "9092") + "/operationB?param1=value1"))
 	if err1 != nil {
@@ -96,6 +95,7 @@ func operationAHandler(w http.ResponseWriter, r *http.Request) {
 
 	// we have error
 	if errors.Length() > 0 {
+		ext.Error.Set(span, true)
 		http.Error(w, errors.Error(), http.StatusInternalServerError)
 	}
 }
