@@ -12,8 +12,6 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/stretchr/testify/assert"
-	//jaeger "github.com/uber/jaeger-client-go"
-	// jaegerLogger "github.com/uber/jaeger-client-go/log"
 )
 
 // Test that when we make an outbound http request within a span at client side
