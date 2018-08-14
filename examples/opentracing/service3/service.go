@@ -8,6 +8,7 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 
 	"github.com/splunk/ssc-observation/logging"
+	"github.com/splunk/ssc-observation/tracing"
 	ssctracing "github.com/splunk/ssc-observation/tracing/opentracing"
 )
 
@@ -44,7 +45,8 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	// Configure Route http requests
 	// Service A operationA calls serviceB then serviceC which errors out at the end
 	http.Handle("/operationC", logging.NewRequestLoggerHandler(logging.Global(),
-		ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationCHandler))))
+		tracing.NewRequestContextHandler(
+			ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationCHandler)))))
 	logger.Info("ready for handling requests")
 	err := http.ListenAndServe(hostPort, nil)
 	wg.Done()

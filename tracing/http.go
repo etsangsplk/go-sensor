@@ -1,7 +1,6 @@
 package tracing
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -32,8 +31,6 @@ func (h *requestContextHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		requestID = bson.NewObjectId().Hex()
 	}
 	tenantID := tenantIDFromPath(r.URL.Path)
-
-	fmt.Printf("***** requestID %v, tenantID; %v urlPath: %v \n", requestID, tenantID, r.URL.Path)
 
 	ctx := r.Context()
 	ctx = WithRequestID(ctx, requestID)

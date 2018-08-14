@@ -17,6 +17,16 @@ type Client struct {
 	traceRequest   RequestFunc // Request wrapper
 }
 
+// NewRequest returns a new request from upstream ctx context.
+func NewRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
+    req, err := http.NewRequest(http.MethodPost, url, body)
+    if err != nil {
+        return nil, err
+    }
+    //req = outBoundHTTPRequest(req.WithContext(ctx))
+    return req, err
+}
+
 // NewHTTPClient returns a new client instance from upstream ctx context.
 // It wraps http.client and add opentracing meta data into outbound http.request.
 func NewHTTPClient(ctx context.Context) *Client {
@@ -25,7 +35,7 @@ func NewHTTPClient(ctx context.Context) *Client {
 		httpClient:     &http.Client{},
 		tracer:         Global(), // assume that there is a tracer already registered.
 	}
-	c.traceRequest = OutboundHTTPRequest(c.tracer)
+	c.traceRequest = OutboundHTTPRequest()
 	return c
 }
 

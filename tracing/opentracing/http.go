@@ -24,7 +24,7 @@ type RequestFunc func(req *http.Request) *http.Request
 // OutboundHTTPRequest returns a RequestFunc that injects a span so the server serving this rquest
 // will have the information to continue the trace (create child span etc).
 // If no such Span can be found, the RequestFunc is a noop.
-func OutboundHTTPRequest(tracer opentracing.Tracer) RequestFunc {
+func OutboundHTTPRequest() RequestFunc {
 	return func(req *http.Request) *http.Request {
 		// Retrieve the Span from request context.
 		ctx := req.Context()
@@ -53,6 +53,7 @@ func OutboundHTTPRequest(tracer opentracing.Tracer) RequestFunc {
 
 			// Inject the Span context into the outgoing HTTP Request.
 			// Sicne we are sending an HTTP request, will use the HTTP headers as carrier.
+            tracer := Global()
 			err = tracer.Inject(
 				span.Context(),
 				opentracing.HTTPHeaders,

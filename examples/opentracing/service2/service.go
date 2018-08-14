@@ -45,7 +45,8 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	// Configure Route http requests
 	// Service A operationA calls serviceB then serviceC which errors out at the end
 	http.Handle("/operationB", logging.NewRequestLoggerHandler(logging.Global(),
-		ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationBHandler))))
+		tracing.NewRequestContextHandler(
+			ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationBHandler)))))
 
 	logger.Info("ready for handling requests")
 	err := http.ListenAndServe(hostPort, nil)
@@ -60,16 +61,23 @@ func operationBHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logging.From(ctx)
 	log.Info("Executing operation", "operation", "B")
+	fmt.Printf("***** %#v\n", ctx)
 	tenantID := tracing.TenantIDFrom(ctx)
-	ret := queryDatabase(ctx, fmt.Sprintf("SELECT tenant from Customer where tenantID=%v", tenantID))
+	ret, err := queryDatabase(ctx, tenantID)
+
 	notifySubscriber(ctx, ret)
 	w.Write([]byte(ret))
-	w.WriteHeader(http.StatusOK)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
 }
 
 // queryDatabase queries a fake database for some data that is crucial for completion of operation.
 // Assume that we also want to know the database information for the span.
-func queryDatabase(ctx context.Context, statment string) string {
+func queryDatabase(ctx context.Context, tenantID string) (string, error) {
+	var err error = nil
 	logger := logging.Global()
 
 	// A new span for local function, ignoring the returned context from this
@@ -87,11 +95,15 @@ func queryDatabase(ctx context.Context, statment string) string {
 	// We are a client calling the database server so set so.
 	tag.SpanKindRPCClient.Set(span)
 	tag.PeerService.Set(span, "mysql")
-	span.SetTag("sql.query", statment)
+	span.SetTag("sql.query", fmt.Sprintf("SELECT tenant from Customer where tenantID=%v", tenantID))
+
+	if tenantID == "" {
+		err = fmt.Errorf("tenantID is empty")
+	}
 	// This operation sleep some random time and should show in reporter
 	Sleep(time.Duration(1), time.Duration(2))
 	span.LogKV("event", "delay", "type", "planned db delay")
-	return "someresult"
+	return "someresult", err
 }
 
 // notifySubscriber sends the result to subscriber. This function does not
