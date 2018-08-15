@@ -110,16 +110,16 @@ func operationAHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Info("response code from C", "response code", resp2.StatusCode)
 	}
 
-    httpClient := &http.Client{}
-    newReq, _ := ssctracing.NewRequest(ctx, http.MethodPost, string("http://" + net.JoinHostPort("localhost", "9092") + "/operationB?param1=value1"), nil)
-    resp3, _ := httpClient.Do(newReq)
-    if resp3 != nil {
-        logger.Info("response code from calling google", "response code", resp3.StatusCode)
-    }
-    err4 := isStatusNOK(resp3.StatusCode)
-    if err4 != nil {
-        errors.Add(err4)
-    }
+	httpClient := &http.Client{}
+	newReq, _ := ssctracing.NewRequest(ctx, http.MethodPost, string("http://"+net.JoinHostPort("localhost", "9092")+"/operationB?param1=value1"), nil)
+	resp3, _ := httpClient.Do(newReq)
+	if resp3 != nil {
+		logger.Info("response code from calling google", "response code", resp3.StatusCode)
+	}
+	err4 := isStatusNOK(resp3.StatusCode)
+	if err4 != nil {
+		errors.Add(err4)
+	}
 
 	// we have error from any of the calls.
 	if errors.Length() > 0 {
