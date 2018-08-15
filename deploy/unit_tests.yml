@@ -1,0 +1,5 @@
+version: '3'
+services:
+  units:
+    image: ${IMAGE}
+    entrypoint: "make units"

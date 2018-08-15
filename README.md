@@ -1,4 +1,4 @@
-# ssc-observation [ ![Codeship Status for splunk/ssc-observation](https://app.codeship.com/projects/f6131db0-3764-0136-f72e-36b905590d28/status?branch=master)](https://app.codeship.com/projects/289654)
+# ssc-observation
 
 The ssc-observation repository provides golang packages for instrumenting services with logs and metrics.
 

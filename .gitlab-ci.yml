@@ -1,0 +1,26 @@
+.build_template: &build_template
+  image: cloudrepo-docker.jfrog.io/ssc-example/ssc-cd-container:1.0
+  before_script:
+    # python is just to install docker-compose
+    - apk add --update --no-cache python3
+    - pip3 install docker-compose
+    # Remove hack when moving to 11.2
+    - cd $GOPATH/src
+    - mkdir -p cd.splunkdev.com/$CI_PROJECT_NAMESPACE
+    - cd cd.splunkdev.com/$CI_PROJECT_NAMESPACE
+    - ln -s $CI_PROJECT_DIR
+    - cd $CI_PROJECT_NAME
+    - echo -e "machine cd.splunkdev.com\nlogin gitlab-ci-token\npassword ${CI_JOB_TOKEN}" > ~/.netrc
+    - dep ensure -vendor-only
+      
+stages:
+    - build_test
+
+build_test:
+  stage: build_test
+  <<: *build_template
+  script:
+    - docker build . -t "splunk/ssc-observation" -f deploy/Dockerfile
+    - deploy/scripts/unit_tests.sh "splunk/ssc-observation"
+  except:
+    - tags
