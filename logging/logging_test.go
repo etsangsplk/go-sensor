@@ -195,3 +195,30 @@ func TestGlobalLogger(t *testing.T) {
 	globalLogger = Global()
 	assert.Equal(t, logger, globalLogger) // After assigning the logger
 }
+
+func TestLoggingWithFlatternFields(t *testing.T) {
+	outC, w := StartLogCapturing()
+	logger := NewWithOutput("testlogger", w)
+
+	mapStringInterface := map[string]interface{}{
+		"integer": 1,
+	}
+
+	mapStringString := map[string]string{
+		"b": "false",
+	}
+	fieldBuilder := &FieldsBuilder{}
+	fieldBuilder.FlattenMapInterface(mapStringInterface)
+	fieldBuilder.FlattenMapString(mapStringString)
+	fieldBuilder.AddFields("a", 1, "b", "b", "e", "no empty string allowed")
+	// 10 because it also accumulated those from mapStringInteface and mapStringString
+	assert.Equal(t, 10, len(fieldBuilder.Fields()))
+	logger.Info("Info statement with flattened map string as fields", fieldBuilder.Fields()...)
+	s := StopLogCapturing(outC, w)
+	assert.NotNil(t, s)
+	assert.Contains(t, s[0], `"integer":1`)
+	// method does not deduplicate keys
+	assert.Contains(t, s[0], `"b":"b"`)
+	assert.Contains(t, s[0], `"b":"false"`)
+	assert.Contains(t, s[0], `"e":"no empty string allowed"`)
+}
