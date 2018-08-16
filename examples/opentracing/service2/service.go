@@ -61,13 +61,15 @@ func operationBHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logging.From(ctx)
 	log.Info("Executing operation", "operation", "B")
+
 	tenantID := tracing.TenantIDFrom(ctx)
 	ret, err := queryDatabase(ctx, tenantID)
+	w.Write([]byte(ret))
 	// Note: subscriber notifcation is not contributing to operation B, so no new span
 	// is created.
 	err1 := notifySubscriber(ctx, ret)
 	log.Error(err1, "subscriber notifcation error")
-	w.Write([]byte(ret))
+
 	if err != nil {
 		http.Error(w, err1.Error(), http.StatusInternalServerError)
 		return
@@ -81,10 +83,9 @@ func queryDatabase(ctx context.Context, tenantID string) (string, error) {
 	var err error = nil
 	logger := logging.Global()
 
-	// A new span for local function, ignoring the returned context from this
-	// operation for this example, since we are not propogating to another level
-	// in tthis example. But if you do need to propagate, you need to return back and
-	// wrap this as span context and into the request context.
+	// A new span for queryDatabase functon assuming that it is significant to operation B.
+	// Span is done when this function is over. Note that it includes
+	// calling a fake DB plus the sleeping function for this example.
 	span, _ := ssctracing.StartSpanFromContext(ctx, "queryDatabase")
 	defer func() {
 		if span != nil {
@@ -92,7 +93,7 @@ func queryDatabase(ctx context.Context, tenantID string) (string, error) {
 		}
 	}()
 
-	logger.Info("excuted queryDatabase")
+	logger.Info("excuted queryCustomerDatabase")
 	// We are a client calling the database server so set so.
 	tag.SpanKindRPCClient.Set(span)
 	tag.PeerService.Set(span, "mysql")
@@ -116,9 +117,9 @@ func queryDatabase(ctx context.Context, tenantID string) (string, error) {
 func notifySubscriber(ctx context.Context, result string) error {
 	logger := logging.Global()
 	span := ssctracing.SpanFromContext(ctx)
-	ret := "notify_with_result"
+
 	err := func() error {
-		logger.Info("notifying subscriber", "result", ret)
+		logger.Info("notifying subscriber", "result", "notify_with_result")
 		return fmt.Errorf("server connected disconnected too many times")
 	}()
 	span.LogKV("event", "error", "message", err.Error())
