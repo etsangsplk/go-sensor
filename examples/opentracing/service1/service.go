@@ -111,20 +111,8 @@ func operationAHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func isStatusNOK(statusCode int) error {
-	if statusCode != http.StatusOK {
-		return fmt.Errorf(http.StatusText(statusCode))
-	}
-	return nil
-}
-
 func doCall(ctx context.Context, httpClient *http.Client, method, url string, body io.Reader) (*http.Response, error) {
-	req, _ := ssctracing.NewRequest(ctx, method, url, body)
-	if method == http.MethodPost {
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	}
-	// This propagate X-Request-ID to another microservice
-	req.Header.Add(tracing.XRequestID, tracing.RequestIDFrom(ctx))
+	req, _ := makeRequest(ctx, method, url, body)
 	resp, _ := httpClient.Do(req)
 	defer func() {
 		if resp != nil {
@@ -138,4 +126,21 @@ func doCall(ctx context.Context, httpClient *http.Client, method, url string, bo
 	}
 
 	return resp, nil
+}
+
+func makeRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
+	req, err := ssctracing.NewRequest(ctx, method, url, body)
+	if method == http.MethodPost {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+	// This propagate X-Request-ID to another microservice
+	req.Header.Add(tracing.XRequestID, tracing.RequestIDFrom(ctx))
+	return req, err
+}
+
+func isStatusNOK(statusCode int) error {
+	if statusCode != http.StatusOK {
+		return fmt.Errorf(http.StatusText(statusCode))
+	}
+	return nil
 }

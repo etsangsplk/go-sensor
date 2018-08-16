@@ -47,6 +47,8 @@ func NewTracer(serviceName string, logger *logging.Logger) (Tracer, io.Closer) {
 		Type:  "const",
 		Param: 1, // This reports 100%. Need to let user choose. Functional Options?
 	}
+	// NewCompositeReporter is used internally by library which ncludes logger reporter
+	// created from logger automatically
 	reporter := &config.ReporterConfig{
 		LogSpans: true,
 	}

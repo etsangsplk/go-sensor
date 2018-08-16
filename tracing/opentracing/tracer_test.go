@@ -86,13 +86,11 @@ func TestNewTracerWithSamplerReporter(t *testing.T) {
 	span.Finish()
 
 	s := StopLogCapturing(outC, w)
-	fmt.Printf("s: %#v", s)
 
 	assert.NotNil(t, tracer)
 	assert.NotEmpty(t, span.Context())
 	// Since there is no API to get SpanID, use the following to infer spanID is nonempty
 	spanCtx := fmt.Sprintf("%#v \n", span.Context())
-	fmt.Printf(spanCtx)
 	assert.NotContains(t, spanCtx, `spanID:""`)
 	assert.Contains(t, spanCtx, `spanID:`)
 	// This is the first span, so got no parentID.
