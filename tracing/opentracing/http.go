@@ -163,6 +163,7 @@ func (h *httpOpentracingHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		}
 	}()
 
+	// Send the context with the span info downward
 	r = r.WithContext(opentracing.ContextWithSpan(r.Context(), span))
 	// serve the real operation.
 	h.next.ServeHTTP(rw, r)

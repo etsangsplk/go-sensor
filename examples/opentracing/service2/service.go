@@ -45,7 +45,8 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	// Configure Route http requests
 	http.Handle("/operationB", logging.NewRequestLoggerHandler(logging.Global(),
 		tracing.NewRequestContextHandler(
-			ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationBHandler)))))
+			ssctracing.NewHTTPOpentracingHandler(
+				http.HandlerFunc(operationBHandler)))))
 
 	logger.Info("ready for handling requests")
 	err := http.ListenAndServe(hostPort, nil)
@@ -62,7 +63,8 @@ func operationBHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info("Executing operation", "operation", "B")
 	tenantID := tracing.TenantIDFrom(ctx)
 	ret, err := queryDatabase(ctx, tenantID)
-	// Note we subscriber notifcation is not contributing to operation Bs
+	// Note: subscriber notifcation is not contributing to operation B, so no new span
+	// is created.
 	err1 := notifySubscriber(ctx, ret)
 	log.Error(err1, "subscriber notifcation error")
 	w.Write([]byte(ret))

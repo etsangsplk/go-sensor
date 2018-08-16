@@ -46,7 +46,8 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	// Configure Route http requests
 	http.Handle("/tenant1/operationA", logging.NewRequestLoggerHandler(logging.Global(),
 		tracing.NewRequestContextHandler(
-			ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationAHandler)))))
+			ssctracing.NewHTTPOpentracingHandler(
+				http.HandlerFunc(operationAHandler)))))
 
 	logger.Info("ready for handling requests")
 	err := http.ListenAndServe(hostPort, nil)
