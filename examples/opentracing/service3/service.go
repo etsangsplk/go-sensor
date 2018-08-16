@@ -43,7 +43,6 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	logger.Info(fmt.Sprintf("Starting service %s", serviceName))
 
 	// Configure Route http requests
-	// Service A operationA calls serviceB then serviceC which errors out at the end
 	http.Handle("/operationC", logging.NewRequestLoggerHandler(logging.Global(),
 		tracing.NewRequestContextHandler(
 			ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationCHandler)))))
@@ -72,9 +71,8 @@ func operationCHandler(w http.ResponseWriter, r *http.Request) {
 	// Add event to span
 	childSpan.LogKV("event", "error", "type", "server error", "error", err.Error())
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusOK)
+		return
 	}
+	return
 }

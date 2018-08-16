@@ -1,8 +1,9 @@
 package main
 
 import (
-	//"context"
+	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"sync"
@@ -43,7 +44,6 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	logger.Info(fmt.Sprintf("Starting service %s", serviceName))
 
 	// Configure Route http requests
-	// Service A operationA calls serviceB then serviceC which errors out at the end
 	http.Handle("/tenant1/operationA", logging.NewRequestLoggerHandler(logging.Global(),
 		tracing.NewRequestContextHandler(
 			ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationAHandler)))))
@@ -68,67 +68,46 @@ func operationAHandler(w http.ResponseWriter, r *http.Request) {
 	logger := logging.From(ctx)
 	logger.Info("Executing operation", "operation", "A", "param1", param1)
 
-	// Get the tracer for this service
-	client := ssctracing.NewHTTPClient(ctx)
 	// The Http Handler should have created a new span and we just need to add to it.
 	// Add event to the current span
 	span := ssctracing.SpanFromContext(ctx)
 
-	resp1, _ := client.Get(string("http://" + net.JoinHostPort("localhost", "9092") + "/operationB?param1=value1"))
-	defer func() {
-		if resp1 != nil {
-			resp1.Body.Close()
-		}
-	}()
-
-	// Lets assume a http response that is not StatusOK results an error
-	err1 := isStatusNOK(resp1.StatusCode)
-	if err1 != nil {
-		errors.Add(err1)
-	}
-
-	span.LogKV("event", "call service B", "type", "external service")
+	httpClient := &http.Client{}
+	// Each of the following client call will trigger the "remote" server to create a new span on their side. If remote server
+	// is not responding, no new span is created.
+	resp1, err := doCall(ctx, httpClient, http.MethodGet, string("http://"+net.JoinHostPort("localhost", "9092")+"/operationB?param1=value1"), nil)
 	if resp1 != nil {
 		logger.Info("response code from B", "response code", resp1.StatusCode)
 	}
-
-	resp2, _ := client.Post(string("http://"+net.JoinHostPort("localhost", "9093")+"/operationC?param1=value1"), "application/x-www-form-urlencoded", nil)
-	defer func() {
-		if resp2 != nil {
-			resp2.Body.Close()
-		}
-	}()
-
-	// Lets assume a http response that is not StatusOK results an error
-	err2 := isStatusNOK(resp2.StatusCode)
-	if err2 != nil {
-		errors.Add(err2)
+	if err != nil {
+		errors.Add(err)
 	}
 
-	span.LogKV("event", "call service C", "type", "internal service")
+	span.LogKV("event", "call service C", "type", "external service")
+	resp2, err := doCall(ctx, httpClient, http.MethodPost, string("http://"+net.JoinHostPort("localhost", "9093")+"/operationC?param1=value1"), nil)
 	if resp2 != nil {
 		logger.Info("response code from C", "response code", resp2.StatusCode)
 	}
-
-	httpClient := &http.Client{}
-	newReq, _ := ssctracing.NewRequest(ctx, http.MethodPost, string("http://"+net.JoinHostPort("localhost", "9092")+"/operationB?param1=value1"), nil)
-	resp3, _ := httpClient.Do(newReq)
-	if resp3 != nil {
-		logger.Info("response code from calling google", "response code", resp3.StatusCode)
+	if err != nil {
+		errors.Add(err)
 	}
-	err4 := isStatusNOK(resp3.StatusCode)
-	if err4 != nil {
-		errors.Add(err4)
+
+	span.LogKV("event", "call service B", "type", "internal service")
+	resp3, err := doCall(ctx, httpClient, http.MethodPut, string("http://"+net.JoinHostPort("localhost", "9092")+"/operationB?param1=value1"), nil)
+	if resp3 != nil {
+		logger.Info("response code from calling service B", "response code", resp3.StatusCode)
+	}
+	if err != nil {
+		errors.Add(err)
 	}
 
 	// we have error from any of the calls.
 	if errors.Length() > 0 {
 		ext.Error.Set(span, true)
-		w.WriteHeader(http.StatusInternalServerError)
 		http.Error(w, errors.Error(), http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusOK)
+		return
 	}
+	return
 }
 
 func isStatusNOK(statusCode int) error {
@@ -136,4 +115,26 @@ func isStatusNOK(statusCode int) error {
 		return fmt.Errorf(http.StatusText(statusCode))
 	}
 	return nil
+}
+
+func doCall(ctx context.Context, httpClient *http.Client, method, url string, body io.Reader) (*http.Response, error) {
+	req, _ := ssctracing.NewRequest(ctx, method, url, body)
+	if method == http.MethodPost {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+	// This propagate X-Request-ID to another microservice
+	req.Header.Add(tracing.XRequestID, tracing.RequestIDFrom(ctx))
+	resp, _ := httpClient.Do(req)
+	defer func() {
+		if resp != nil {
+			resp.Body.Close()
+		}
+	}()
+	// Lets assume a http response that is not StatusOK results an error
+	if resp != nil {
+		err := isStatusNOK(resp.StatusCode)
+		return resp, err
+	}
+
+	return resp, nil
 }

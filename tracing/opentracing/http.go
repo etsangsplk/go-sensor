@@ -13,7 +13,7 @@ import (
 	// Because of referencing logging to get the requestID etc,
 	// to avoid (import cycle), I now put everything under opentracing folder
 	// instead if just tracing. Suggestion?
-	"github.com/splunk/ssc-observation/logging"
+	//"github.com/splunk/ssc-observation/logging"
 	"github.com/splunk/ssc-observation/tracing"
 )
 
@@ -132,6 +132,7 @@ func inboundHTTPRequest(operationName string, r *http.Request) (opentracing.Span
 	span := tracer.StartSpan(operationName, tag.RPCServerOption(parentSpanContext), opentracing.ChildOf(parentSpanContext))
 	tag.HTTPMethod.Set(span, r.Method)
 	tag.HTTPUrl.Set(span, r.URL.String())
+	tagCurrentSpan(r.Context(), span)
 
 	// update request context to include our opentracing context
 	return span, nil
@@ -152,22 +153,15 @@ func NewHTTPOpentracingHandler(next http.Handler) http.Handler {
 
 func (h *httpOpentracingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rw := tracing.NewHTTPResponseWriter(w)
-
 	ctx := r.Context()
 	operationName := tracing.OperationIDFrom(ctx)
 
-	span, err := inboundHTTPRequest(operationName, r)
+	span, _ := inboundHTTPRequest(operationName, r)
 	defer func() {
 		if span != nil {
 			span.Finish()
 		}
 	}()
-	if err != nil {
-		logger := logging.Global()
-		logger.Error(err, "error extract span from request")
-	}
-
-	tagCurrentSpan(ctx, span)
 
 	r = r.WithContext(opentracing.ContextWithSpan(r.Context(), span))
 	// serve the real operation.

@@ -43,7 +43,6 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	logger := logging.Global()
 	logger.Info(fmt.Sprintf("Starting service %s", serviceName))
 	// Configure Route http requests
-	// Service A operationA calls serviceB then serviceC which errors out at the end
 	http.Handle("/operationB", logging.NewRequestLoggerHandler(logging.Global(),
 		tracing.NewRequestContextHandler(
 			ssctracing.NewHTTPOpentracingHandler(http.HandlerFunc(operationBHandler)))))
@@ -61,17 +60,17 @@ func operationBHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logging.From(ctx)
 	log.Info("Executing operation", "operation", "B")
-	fmt.Printf("***** %#v\n", ctx)
 	tenantID := tracing.TenantIDFrom(ctx)
 	ret, err := queryDatabase(ctx, tenantID)
-
-	notifySubscriber(ctx, ret)
+	// Note we subscriber notifcation is not contributing to operation Bs
+	err1 := notifySubscriber(ctx, ret)
+	log.Error(err1, "subscriber notifcation error")
 	w.Write([]byte(ret))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusOK)
+		http.Error(w, err1.Error(), http.StatusInternalServerError)
+		return
 	}
+	return
 }
 
 // queryDatabase queries a fake database for some data that is crucial for completion of operation.

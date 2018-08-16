@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	//"net/http/httptrace"
 	"net/url"
 	"strings"
 	// opentracing "github.com/opentracing/opentracing-go"
