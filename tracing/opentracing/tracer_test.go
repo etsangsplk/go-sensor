@@ -138,10 +138,6 @@ func TestSpanCreation(t *testing.T) {
 	parentSpanCtxStr := fmt.Sprintf("%#v \n", parentSpan.Context())
 	childSpanCtxStr := fmt.Sprintf("%#v \n", childSpan.Context())
 
-	fmt.Printf("parentSpanContext: %#v\n", parentSpanCtxStr)
-
-	fmt.Printf("childSpanContext: %#v\n", childSpanCtxStr)
-
 	assert.NotContains(t, parentSpanCtxStr, `spanID:""`)
 	assert.Contains(t, parentSpanCtxStr, `spanID:`)
 	// This is the first span, so parentID should be 0x0.
@@ -157,7 +153,7 @@ func TestSpanCreation(t *testing.T) {
 	// a span ie being reported. SpanID is changing so just do inference.
 	assert.Contains(t, s[0], `"message":"Initializing logging reporter\n"`)
 	assert.Contains(t, s[0], `"service":"testlogger"`)
-	// we should have reported 3 spans
-	assert.Contains(t, s[1], `"message":"Reporting span"`)
-	assert.Contains(t, s[2], `"message":"Reporting span"`)
+	// we should have reported 2 spans
+	assert.Contains(t, s[1], `"message":"Reporting span`)
+	assert.Contains(t, s[2], `"message":"Reporting span`)
 }
