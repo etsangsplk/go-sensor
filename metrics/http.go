@@ -51,7 +51,7 @@ type httpAccessHandler struct {
 // http metrics with the http_requests_durations_histogram_seconds metric.
 // The handler uses tracing.OperationIDFrom() to extract the operation ID
 // from the request context, if any.
-func NewHTTPAccessHandler(next http.Handler) *httpAccessHandler {
+func NewHTTPAccessHandler(next http.Handler) http.Handler {
 	return &httpAccessHandler{next: next}
 }
 
