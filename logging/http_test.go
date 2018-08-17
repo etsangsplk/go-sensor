@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"cd.splunkdev.com/core-services/ssc-observation/tracing"
+	"cd.splunkdev.com/libraries/go-observation/tracing"
 	"github.com/stretchr/testify/assert"
 )
 

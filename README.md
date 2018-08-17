@@ -1,6 +1,6 @@
-# ssc-observation
+# go-observation
 
-The ssc-observation repository provides golang packages for instrumenting services with logs and metrics.
+The go-observation repository provides golang packages for instrumenting services with logs and metrics.
 
 The logging package contains a full API for structured logging plus http middleware handlers. See the documentation section below.
 
@@ -16,12 +16,12 @@ The tracing package provides http middleware and context APIs for enriching the 
 - [Prometheus Client API](https://godoc.org/github.com/prometheus/client_golang/prometheus)
 - [Metrics Architecture](https://docs.google.com/document/d/11AlcILE3S_7XE5t3hgUAYSJCsosbFbzGQW2VALcz-hU/edit?usp=sharing)
 
-Inspecting the ssc-observation code itself is also a great resource and most of the public APIs are well documented.
+Inspecting the go-observation code itself is also a great resource and most of the public APIs are well documented.
 
-Join the ssc-observation slack channel to ask questions and hear announcements on improvements and changes.
+Join the go-observation slack channel to ask questions and hear announcements on improvements and changes.
 
 ## An Important Note About Private Repositories
-Codeship does not have a solution for resolving imports to private repositories. So the recommended approach for using the ssc-observation repository is to checkin your entire vendor directory. For KV Store this meant:
+Codeship does not have a solution for resolving imports to private repositories. So the recommended approach for using the go-observation repository is to checkin your entire vendor directory. For KV Store this meant:
 1) Removing 'dep ensure' steps from Codeship. Even with all the packages checked in it will still try to resolve them for verification (apparently).
 2) Adding a 'make dep' target to Makefile to run 'dep ensure'
 3) Removing vendor from .gitignore
