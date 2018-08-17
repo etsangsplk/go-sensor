@@ -252,7 +252,7 @@ The request tracing above will generate the following output, note the requestId
 {"level":"ERROR","time":"2018-04-22T20:42:08.047Z","file":"examples/main.go:107","message":"Bad request","service":"service1","requestId":"5add5610eb744568c6000001","param1":"value1","error":"Bad value for param1"}
 ```
 
-A complete example for request tracing can be found in the [examples/main.go](https://github.com/splunk/logging/blob/master/examples/main.go).
+A complete example for request tracing can be found in the [examples/main.go](https://github.com/splunk/logging/blob/master/examples/main.go). Additional examples for Chi fremworks are in chi.go.
 
 ## Component Logging
 A component logger is simply a logger used in a specific parts of the program. It traces out {"component": componentName}. There will be features in the future for registering these named loggers so they can be remotely administrated. Component loggers can be useful in non-request paths, for example a goroutine that does background reaping of stale data.

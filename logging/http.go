@@ -65,6 +65,18 @@ func NewRequestLoggerHandler(parentLogger *Logger, handler http.Handler) http.Ha
 	}
 }
 
+// NewRequestLoggerHandlerAdaptor is a adaptor for NewRequestLoggerHandler.
+// It's functionality is to deal with parameter list mismatch between flavors of middleware frameworks.
+// For example, gin does not allow 2 parameters in signature while openapi allows.
+func NewRequestLoggerHandlerAdaptor(parentLogger *Logger) func(next http.Handler) http.Handler {
+	return func(handler http.Handler) http.Handler {
+		return &requestLoggerHandler{
+			handler:      handler,
+			parentLogger: parentLogger,
+		}
+	}
+}
+
 // ServeHTTP implements the http.Handler interface.
 func (h *requestLoggerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
