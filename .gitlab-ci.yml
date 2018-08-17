@@ -20,7 +20,7 @@ build_test:
   stage: build_test
   <<: *build_template
   script:
-    - docker build . -t "splunk/ssc-observation" -f deploy/Dockerfile
-    - deploy/scripts/unit_tests.sh "splunk/ssc-observation"
+    - docker build . -t "splunk/go-observation" -f deploy/Dockerfile
+    - deploy/scripts/unit_tests.sh "splunk/go-observation"
   except:
     - tags

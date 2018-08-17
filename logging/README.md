@@ -1,4 +1,4 @@
-# Package logging [ ![Codeship Status for splunk/ssc-observation](https://app.codeship.com/projects/f6131db0-3764-0136-f72e-36b905590d28/status?branch=master)](https://app.codeship.com/projects/289654)
+# Package logging
 
 The logging package provides a standard for golang SSC services to instrument their services according to the [SSC Logging Standard](https://confluence.splunk.com/display/PROD/ERD%3A+Shared+Logging) format. Features include structured leveled logging, request loggers, component loggers, and http access tracing. This logging package wraps a more complicated logging package (zap) and exposes just the APIs needed to instrument your service according to the SSC standard.
 
@@ -6,7 +6,7 @@ The logging package provides a standard for golang SSC services to instrument th
 Add this line to import:
 ```
 import (
-	"github.com/splunk/ssc-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/logging"
 )
 ```
 ## Features
@@ -153,7 +153,7 @@ The logging package has several features to facilitate request logging. For http
 
 In addition to wiring in code to create the request logger, you must also modify the request call path to have 'ctx context.Context' as the first parameter. You may find it useful in places to use context.TODO() as a temporary context as you iteratively transform your code. Finally, context.Background() provides the root context for places where no other context exists.
 
-See the [ssc-observation README](https://github.com/splunk/ssc-observation) for details on how to configure the request handler.
+See the [go-observation README](https://cd.splunkdev.com/splunk/go-observation) for details on how to configure the request handler.
 
 ### Non-HTTP Request Logging
 While not as common, request logging in the non-http case is easy. Simply use logging.NewRequestContext() directly. Note that the parent logger used to clone the request logger from will be taken from the provided context using logging.From(ctx). If no logger is found in ctx then the global logger is used.
@@ -168,7 +168,7 @@ func ExampleNonHttpRequest() {
 ```
 
 ### HTTP Request Logging with Swagger
-Integrating request logging with Swagger generated code is easy. An http handler is added to the pipeline and then ctx is pulled from the http request. See the [ssc-observation README](https://github.com/splunk/ssc-observation) for details on how to configure the handlers.
+Integrating request logging with Swagger generated code is easy. An http handler is added to the pipeline and then ctx is pulled from the http request. See the [go-observation README](https://cd.splunkdev.com/libraries/go-observation) for details on how to configure the handlers.
 
 Next extract the context (ctx) from the http request in each strongly-typed swagger handler. And then pass that ctx parameter to the functions implementing that API. In any function you want to use the logger just extract it from ctx using 'log := logging.From(ctx)'
 ```go
@@ -349,7 +349,7 @@ log.Info("Request", "param1", param1, "method", method)
 ## Panic Handlers
 The logging library provides two HTTP middleware handlers for panics. logging.NewPanicHandler() provides global panic handling and should be at the root of your middleware pipeline. logging.NewPanicRequestHandler() provides request-scoped panic handling, specifically it will log the panic using the request logger found on the http request context. This means the log output will have request and tenant ids (and operation id if provided). The request panic handler should be registered after logging.NewRequestLoggerHandler().
 
-A full example of composing the loggers together is found in the [Middleware Handler Configuration section](https://github.com/splunk/ssc-observation#middleware-handler-configuration)
+A full example of composing the loggers together is found in the [Middleware Handler Configuration section](https://cd.splunkdev.com/libraries/go-observation#middleware-handler-configuration)
 
 
 ## Real World Examples:
@@ -394,7 +394,7 @@ into this:
 
 ### Installation
 ```bash
-go get github.com/splunk/ssc-observation/cmd/pplog
+go get cd.splunkdev.com/libraries/go-observation/cmd/pplog
 ```
 This should install the command `pplog` in `$GOPATH/bin/pplog`.
 
