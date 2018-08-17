@@ -21,7 +21,6 @@ import (
 func TestNewRequestGET(t *testing.T) {
 	// Initiate a mock tracer and a top level span
 	tracer := mocktracer.New()
-	SetGlobalTracer(tracer)
 	span := tracer.StartSpan("to_inject").(*mocktracer.MockSpan)
 	defer span.Finish()
 
@@ -67,7 +66,6 @@ func TestNewRequestGET(t *testing.T) {
 func TestNewRequestPOST(t *testing.T) {
 	// Initiate a mock tracer and a top level span
 	tracer := mocktracer.New()
-	SetGlobalTracer(tracer)
 	span := tracer.StartSpan("to_inject").(*mocktracer.MockSpan)
 	defer span.Finish()
 

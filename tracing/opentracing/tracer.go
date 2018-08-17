@@ -60,7 +60,7 @@ func NewTracer(serviceName string, logger *logging.Logger) (Tracer, io.Closer) {
 // It also allows configuration for sampler to only subet of spans out, reporter for different types of reporters.
 // It also returns a closer func to be used to flush buffers before shutdown.
 func newTracer(serviceName string, sampler *config.SamplerConfig, reporter *config.ReporterConfig, logger *logging.Logger) (Tracer, io.Closer) {
-	log := NewLogger(logger)
+	log := newLogger(logger)
 	cfg := &config.Configuration{
 		Sampler:  sampler,
 		Reporter: reporter,
@@ -82,6 +82,12 @@ func newTracer(serviceName string, sampler *config.SamplerConfig, reporter *conf
 func StartSpan(operationName string) opentracing.Span {
 	t := Global()
 	return t.StartSpan(operationName)
+}
+
+// ContextWithSpan returns a new `context.Context` that holds a reference to
+// `span`'s SpanContext.
+func ContextWithSpan(ctx context.Context, span opentracing.Span) context.Context {
+	return opentracing.ContextWithSpan(ctx, span)
 }
 
 // SpanFromContext returns the `Span` previously associated with `ctx`, or

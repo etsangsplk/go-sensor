@@ -20,7 +20,7 @@ type Logger struct {
 // NewLogger creates a new Logger for tracer logger reporter.
 // Information like SpanId will be sent to our ssc logging
 // for record.
-func NewLogger(logger *logging.Logger) *Logger {
+func newLogger(logger *logging.Logger) *Logger {
 	return &Logger{logger: logger}
 }
 
