@@ -126,14 +126,14 @@ log such events in key-value pairs that can be automatically processed by log ag
 
 The package provides middleware for automatically create spans on server for incoming request and tagging stardard Span tags to current span.
 
-See the [ssc-observation README](https://github.com/splunk/ssc-observation) for details on how to configure the middleware pipeline.
+See the [ssc-observation README](cd.splunkdev.com/libraries/go-observation/opentracing) for details on how to configure the middleware pipeline.
 
 You must use the following code to register the middleware:
 
 ```go
 import (
       kvmetrics "github.com/splunk/kvstore-service/kvstore/metrics"
-      ssctracing "github.com/splunk/ssc-observation/opentracing"
+      ssctracing "cd.splunkdev.com/libraries/go-observation/opentracing"
 )
 ... 
 // Simulated microservice A, serving requests.
