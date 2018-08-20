@@ -28,7 +28,7 @@ Usually only one concrete Tracer will be associated with one microservice. A con
 
 ```
 import (
-    "github.com/splunk/ssc-observation/tracing"
+    "cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
 const serviceName = "api-gateway"
@@ -70,7 +70,7 @@ Note the HTTP middleware automatically create a childSpan from incoming http req
 
 ```
 import (
-    ssctracing "github.com/splunk/ssc-observation/tracing"
+    ssctracing "cd.splunkdev.com/libraries/go-observation/opentracing"
 )
 
 ....
@@ -93,7 +93,7 @@ The tags are meant to describe attributes of the span that apply to the whole du
 
 ```
 import (
-    ssctracing "github.com/splunk/ssc-observation/tracing"
+    ssctracing "cd.splunkdev.com/libraries/go-observation/opentracing"
 )
 ...
     
