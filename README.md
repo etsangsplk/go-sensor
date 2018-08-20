@@ -38,7 +38,7 @@ HTTP middleware handlers in tracing, logging and metrics packages compose togeth
 | metrics.NewPrometheusHandler     | Serves up the metrics endpoint /service/metrics to be scraped by the Prometheus server.
 | tracing.NewRequestContextHandler | Adds requestID and tenantID to the http request context. See context APIs in the tracing package.
 | handlers.NewOperationHandler     | A custom service handler to add operationID to the http request context. By convention the operationID should match what is in the service's open-api spec.  Each service will have to implement their own custom handler, see the next section for an example of how to do this.
-| logging.NewRequestLoggerHandler  | Creates a request logger and adds it to the http request context. The request logger will trace requestID, operationID and tenantID if they are available in the http context (set by earlier handlers).
+| logging.NewRequestLoggerHandler  | Creates a request logger and adds it to the http request context. The request logger will trace requestID and tenantID if they are available in the http context (set by earlier handlers).
 | logging.NewPanicRequestHandler   | Logs out request-scoped panics using the request logger. Will re-panic control to the global panic handler which must also be configured. Depends on NewRequestLoggerHandler and NewPanicHandler.
 | logging.NewHTTPAccessHandler     | Logs out http access logs using the request logger. Optionally depends on NewRequestLoggerHandler and its dependencies or custom middleware to provide context.
 | metrics.NewHTTPAccessHandler     | Observes http access metrics using request-scoped context. Optionally depends on operationID context. Must call the metrics.RegisterHTTPMetrics function during service initialization.

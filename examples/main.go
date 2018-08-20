@@ -12,8 +12,9 @@ import (
 
 func main() {
 	ExampleGlobalLogger()
-	ExampleServiceRequestLogger()
 	ExampleNonHttpRequest()
+	ExampleServiceRequestLogger()
+	ExampleChiServiceRequestLogger()
 }
 
 // The global logger is used for code paths that do not have a Context, for
@@ -49,12 +50,11 @@ func ExampleGlobalLogger() {
 // and other request specific information like tenantId
 //
 // The output from this example is:
-//   {"level":"INFO","time":"2018-04-22T20:42:08.043Z","file":"examples/main.go:61","message":"Starting service","service":"service1","hostname":"abc1000"}
-//   {"level":"INFO","time":"2018-04-22T20:42:08.046Z","file":"examples/main.go:45","message":"Running client","service":"client1","hostname":"abc1000"}
-//   {"level":"INFO","time":"2018-04-22T20:42:08.047Z","file":"examples/main.go:103","message":"Executing operation1","service":"service1","requestId":"5add5610eb744568c6000001","param1":"value1","hostname":"abc1000"}
-//   {"level":"ERROR","time":"2018-04-22T20:42:08.047Z","file":"examples/main.go:107","message":"Bad request","service":"service1","requestId":"5add5610eb744568c6000001","param1":"value1","error":"Bad value for param1","hostname":"abc1000"}
-//   {"level":"INFO","time":"2018-04-22T20:42:08.048Z","file":"examples/main.go:51","message":"Response successful","service":"client1","statusCode":200,"hostname":"abc1000"}
-//
+//   {"level":"INFO","time":"2018-07-14T19:44:46.421Z","location":"examples/main.go:86","message":"Starting service","service":"service1","hostname":"abcdef"}
+//   {"level":"INFO","time":"2018-07-14T19:44:46.423Z","location":"examples/main.go:70","message":"Running client","service":"client1","hostname":"abcdef"}
+//   {"level":"INFO","time":"2018-07-14T19:44:46.424Z","location":"examples/main.go:130","message":"Executing operation1","service":"service1","hostname":"abcdef","param1":"value1","webframework":"http"}
+//   {"level":"ERROR","time":"2018-07-14T19:44:46.424Z","location":"examples/main.go:134","message":"Bad request","service":"service1","hostname":"abcdef","param1":"value1","error":"Bad value for param1"}
+//   {"level":"INFO","time":"2018-07-14T19:44:46.424Z","location":"examples/main.go:76","message":"Response successful","service":"client1","hostname":"abcdef","statusCode":200}
 func ExampleServiceRequestLogger() {
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -66,7 +66,7 @@ func ExampleServiceRequestLogger() {
 	// Run the client
 	log := logging.New("client1")
 	log.Info("Running client")
-	resp, err := http.Get("http://localhost:8081/operation1?param1=value1")
+	resp, err := http.Get("http://localhost:8081/operation1?param1=value1&webframework=http")
 	if err != nil {
 		log.Error(err, "Failed request")
 		return
@@ -97,7 +97,8 @@ func serviceMain(hostPort string, wg *sync.WaitGroup) {
 	operation1HandlerFunc := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		param1 := r.URL.Query().Get("param1")
-		operation1(ctx, param1)
+		param2 := r.URL.Query().Get("webframework")
+		operation1(ctx, param1, param2)
 	}
 
 	// TODO: add a tenant handler and connect it in
@@ -107,7 +108,7 @@ func serviceMain(hostPort string, wg *sync.WaitGroup) {
 	operation1Handler = http.HandlerFunc(operation1HandlerFunc)
 
 	// Wrap operation1Handler with the request logging handler that will set up
-	// request context tracing.
+	// request context logging.
 	operation1Handler = logging.NewRequestLoggerHandler(logging.Global(), operation1Handler)
 	http.Handle("/operation1", operation1Handler)
 
@@ -119,11 +120,11 @@ func serviceMain(hostPort string, wg *sync.WaitGroup) {
 }
 
 // Strongly-typed implementation for service1.operation1.
-func operation1(ctx context.Context, param1 string) {
+func operation1(ctx context.Context, param1, webframework string) {
 	// Get the request logger from ctx
 	log := logging.From(ctx)
 
-	log.Info("Executing operation1", "param1", param1)
+	log.Info("Executing operation1", "param1", param1, "webframework", webframework)
 
 	// Example error message, note the special handling for err
 	err := fmt.Errorf("Bad value for param1")
