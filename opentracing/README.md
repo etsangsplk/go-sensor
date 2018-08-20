@@ -146,6 +146,16 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 }
 ```
 
+
+# Running benchmark
+From top folder,
+
+```
+go test -bench=.  ./...
+
+```
+
+
 Resouces:
 [Dapper]: https://research.google.com/archive/papers/dapper-2010-1.pdf
 [opentracing large systems]: http://opentracing.io/documentation/pages/instrumentation/instrumenting-large-systems.html
