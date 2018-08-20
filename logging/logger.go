@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-    "cd.splunkdev.com/libraries/go-observation/tracing"
+	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
 // Constants for standard key names

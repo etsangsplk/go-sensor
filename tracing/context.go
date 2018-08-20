@@ -7,7 +7,8 @@ import (
 type keyType int
 
 const (
-	operationIDContextKey keyType = iota
+	componentContextKey keyType = iota
+	operationIDContextKey
 	requestIDContextKey
 	tenantIDContextKey
 )
@@ -52,6 +53,22 @@ func WithTenantID(ctx context.Context, tenantID string) context.Context {
 // has not been set in the context then the empty string is returned.
 func TenantIDFrom(ctx context.Context) string {
 	if v, ok := ctx.Value(tenantIDContextKey).(string); ok {
+		return v
+	}
+	return ""
+}
+
+// WithComponent creates a new context that includes the value component.
+// Use ComponentFrom() to get the value back out. The component value
+// is used to tag OpenTracing spans.
+func WithComponent(ctx context.Context, component string) context.Context {
+	return context.WithValue(ctx, componentContextKey, component)
+}
+
+// ComponentFrom returns the component value from context. If that value
+// has not been set in the context then the empty string is returned.
+func ComponentFrom(ctx context.Context) string {
+	if v, ok := ctx.Value(componentContextKey).(string); ok {
 		return v
 	}
 	return ""

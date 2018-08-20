@@ -1,18 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sync"
 
-	"github.com/opentracing/opentracing-go/ext"
-
+	"cd.splunkdev.com/libraries/go-observation/examples/opentracing/handlers"
 	"cd.splunkdev.com/libraries/go-observation/logging"
-	ssctracing "cd.splunkdev.com/libraries/go-observation/opentracing"
+	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
-const serviceName = "fulfillment"
+const serviceName = "example-fulfillment"
 
 func main() {
 	// Routine initialization of logger and tracer
@@ -24,9 +25,10 @@ func main() {
 	logging.SetGlobalLogger(logger)
 
 	// Create, set tracer and bind tracer to service name
-	tracer, closer := ssctracing.NewTracer(serviceName, logger)
-	defer closer.Close()
-	ssctracing.SetGlobalTracer(tracer)
+	tracer := lightstepx.NewTracer(serviceName)
+	defer lightstepx.Close(context.Background())
+
+	opentracing.SetGlobalTracer(tracer)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -45,8 +47,9 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	// Configure Route http requests
 	http.Handle("/operationC", logging.NewRequestLoggerHandler(logging.Global(),
 		tracing.NewRequestContextHandler(
-			ssctracing.NewHTTPOpentracingHandler(
-				http.HandlerFunc(operationCHandler)))))
+			handlers.NewOperationHandler(
+				opentracing.NewHTTPOpenTracingHandler(
+					http.HandlerFunc(operationCHandler))))))
 	logger.Info("ready for handling requests")
 	err := http.ListenAndServe(hostPort, nil)
 	wg.Done()
@@ -58,22 +61,18 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 func operationCHandler(w http.ResponseWriter, r *http.Request) {
 	// Get the request logger from ctx
 	ctx := r.Context()
-	log := logging.From(ctx)
-	log.Info("Executing operation", "operation", "C")
+	logger := logging.From(ctx)
+	logger.Info("Executing operation", "operation", "C")
 
 	// The Http Handler should have created a new span and we just need to add to it.
 	// Add event to the current span
-	childSpan := ssctracing.SpanFromContext(ctx)
+	childSpan := opentracing.SpanFromContext(ctx)
+	spanLogger := opentracing.NewSpanLoggerWithSpan(logger, childSpan)
 	// This operation will error out and should show in reporter.
 	err := func() error { return fmt.Errorf("failed operationC") }()
 	if err != nil {
-		ext.Error.Set(childSpan, true)
-	}
-	// Add event to span
-	childSpan.LogKV("event", "error", "type", "server error", "error", err.Error())
-	if err != nil {
+		// Add event to span
+		spanLogger.Error(err, "server error", "type", "server")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
-	return
 }

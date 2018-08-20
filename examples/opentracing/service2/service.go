@@ -11,13 +11,15 @@ import (
 
 	tag "github.com/opentracing/opentracing-go/ext"
 
+	"cd.splunkdev.com/libraries/go-observation/examples/opentracing/handlers"
 	"cd.splunkdev.com/libraries/go-observation/logging"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 	// TODO we need a better name than opentracing --> confusing with the standard one.
-	ssctracing "cd.splunkdev.com/libraries/go-observation/opentracing"
+	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 )
 
-const serviceName = "customer-catalog"
+const serviceName = "example-customer-catalog"
 
 func main() {
 	// Routine initialization of logger and tracer
@@ -29,9 +31,10 @@ func main() {
 	logging.SetGlobalLogger(logger)
 
 	// Create, set tracer and bind tracer to service name
-	tracer, closer := ssctracing.NewTracer(serviceName, logger)
-	defer closer.Close()
-	ssctracing.SetGlobalTracer(tracer)
+	tracer := lightstepx.NewTracer(serviceName)
+	defer lightstepx.Close(context.Background())
+
+	opentracing.SetGlobalTracer(tracer)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -45,8 +48,9 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	// Configure Route http requests
 	http.Handle("/operationB", logging.NewRequestLoggerHandler(logging.Global(),
 		tracing.NewRequestContextHandler(
-			ssctracing.NewHTTPOpentracingHandler(
-				http.HandlerFunc(operationBHandler)))))
+			handlers.NewOperationHandler(
+				opentracing.NewHTTPOpenTracingHandler(
+					http.HandlerFunc(operationBHandler))))))
 
 	logger.Info("ready for handling requests")
 	err := http.ListenAndServe(hostPort, nil)
@@ -64,29 +68,27 @@ func operationBHandler(w http.ResponseWriter, r *http.Request) {
 
 	tenantID := tracing.TenantIDFrom(ctx)
 	ret, err := queryDatabase(ctx, tenantID)
-	w.Write([]byte(ret))
-	// Note: subscriber notifcation is not contributing to operation B, so no new span
+	_, _ = w.Write([]byte(ret))
+	// Note: subscriber notification is not contributing to operation B, so no new span
 	// is created.
 	err1 := notifySubscriber(ctx, ret)
-	log.Error(err1, "subscriber notifcation error")
+	log.Error(err1, "subscriber notification error")
 
 	if err != nil {
 		http.Error(w, err1.Error(), http.StatusInternalServerError)
-		return
 	}
-	return
 }
 
 // queryDatabase queries a fake database for some data that is crucial for completion of operation.
 // Assume that we also want to know the database information for the span.
 func queryDatabase(ctx context.Context, tenantID string) (string, error) {
-	var err error = nil
+	var err error
 	logger := logging.Global()
 
-	// A new span for queryDatabase functon assuming that it is significant to operation B.
+	// A new span for queryDatabase function assuming that it is significant to operation B.
 	// Span is done when this function is over. Note that it includes
 	// calling a fake DB plus the sleeping function for this example.
-	span, _ := ssctracing.StartSpanFromContext(ctx, "queryDatabase")
+	span, _ := opentracing.StartSpanFromContext(ctx, "queryDatabase")
 	defer func() {
 		if span != nil {
 			span.Finish()
@@ -94,6 +96,7 @@ func queryDatabase(ctx context.Context, tenantID string) (string, error) {
 	}()
 
 	logger.Info("excuted queryCustomerDatabase")
+	spanLogger := opentracing.NewSpanLoggerWithSpan(logger, span)
 	// We are a client calling the database server so set so.
 	tag.SpanKindRPCClient.Set(span)
 	tag.PeerService.Set(span, "mysql")
@@ -104,7 +107,9 @@ func queryDatabase(ctx context.Context, tenantID string) (string, error) {
 	}
 	// This operation sleep some random time and should show in reporter
 	Sleep(time.Duration(1), time.Duration(2))
-	span.LogKV("event", "delay", "type", "planned db delay")
+
+	spanLogger.Info("high database response latency observed", "event", "delay", "type", "planned")
+
 	return "someresult", err
 }
 
@@ -116,14 +121,14 @@ func queryDatabase(ctx context.Context, tenantID string) (string, error) {
 // ssc logging to a file.
 func notifySubscriber(ctx context.Context, result string) error {
 	logger := logging.Global()
-	span := ssctracing.SpanFromContext(ctx)
-
+	span := opentracing.SpanFromContext(ctx)
+	spanLogger := opentracing.NewSpanLoggerWithSpan(logger, span)
 	err := func() error {
 		logger.Info("notifying subscriber", "result", "notify_with_result")
 		return fmt.Errorf("server connected disconnected too many times")
 	}()
-	span.LogKV("event", "error", "message", err.Error())
-	logger.Info("excuted notifySubscriber")
+	spanLogger.Error(err, "subscriber notification system error")
+	logger.Info("executed notifySubscriber")
 	return err
 }
 

@@ -6,17 +6,17 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"path"
 	"sync"
 
-	"github.com/cloudfoundry/multierror"
-	"github.com/opentracing/opentracing-go/ext"
-
+	"cd.splunkdev.com/libraries/go-observation/examples/opentracing/handlers"
 	"cd.splunkdev.com/libraries/go-observation/logging"
-	ssctracing "cd.splunkdev.com/libraries/go-observation/opentracing"
+	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
-const serviceName = "api-gateway"
+const serviceName = "example-api-gateway"
 
 func main() {
 	// Routine initialization of logger and tracer
@@ -28,9 +28,10 @@ func main() {
 	logging.SetGlobalLogger(logger)
 
 	// Create, set tracer and bind tracer to service name
-	tracer, closer := ssctracing.NewTracer(serviceName, logger)
-	defer closer.Close()
-	ssctracing.SetGlobalTracer(tracer)
+	tracer := lightstepx.NewTracer(serviceName)
+	defer lightstepx.Close(context.Background())
+
+	opentracing.SetGlobalTracer(tracer)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -46,10 +47,11 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	// Configure Route http requests
 	http.Handle("/tenant1/operationA", logging.NewRequestLoggerHandler(logging.Global(),
 		tracing.NewRequestContextHandler(
-			ssctracing.NewHTTPOpentracingHandler(
-				http.HandlerFunc(operationAHandler)))))
+			handlers.NewOperationHandler(
+				opentracing.NewHTTPOpenTracingHandler(
+					http.HandlerFunc(operationAHandler))))))
 
-	logger.Info("ready for handling requests")
+	logger.Info("Listening...", "hostPort", hostPort)
 	err := http.ListenAndServe(hostPort, nil)
 	wg.Done()
 
@@ -60,76 +62,83 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 }
 
 func operationAHandler(w http.ResponseWriter, r *http.Request) {
-	errors := multierror.MultiError{}
-
-	param1 := r.URL.Query().Get("param1")
-	// Get the request logger from ctx
-
 	ctx := r.Context()
-	logger := logging.From(ctx)
-	logger.Info("Executing operation", "operation", "A", "param1", param1)
-
-	// The Http Handler should have created a new span and we just need to add to it.
-	// Add event to the current span
-	span := ssctracing.SpanFromContext(ctx)
-
-	httpClient := &http.Client{}
-	// Each of the following client call will trigger the "remote" server to create a new span on their side. If remote server
-	// is not responding, no new span is created.
-	resp1, err := doCall(ctx, httpClient, http.MethodGet, string("http://"+net.JoinHostPort("localhost", "9092")+"/operationB?param1=value1"), nil)
-	if resp1 != nil {
-		logger.Info("response code from B", "response code", resp1.StatusCode)
-	}
+	ctx = tracing.WithOperationID(ctx, "operationA")
+	log := logging.From(ctx)
+	param1 := r.URL.Query().Get("param1")
+	log.Info("Handling request", "operation", "operationA", "param1", param1)
+	err := operationA(ctx, param1)
 	if err != nil {
-		errors.Add(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
-	span.LogKV("event", "call service C", "type", "external service")
-	resp2, err := doCall(ctx, httpClient, http.MethodPost, string("http://"+net.JoinHostPort("localhost", "9093")+"/operationC?param1=value1"), nil)
-	if resp2 != nil {
-		logger.Info("response code from C", "response code", resp2.StatusCode)
-	}
-	if err != nil {
-		errors.Add(err)
-	}
-
-	span.LogKV("event", "call service B", "type", "internal service")
-	resp3, err := doCall(ctx, httpClient, http.MethodPut, string("http://"+net.JoinHostPort("localhost", "9092")+"/operationB?param1=value1"), nil)
-	if resp3 != nil {
-		logger.Info("response code from calling service B", "response code", resp3.StatusCode)
-	}
-	if err != nil {
-		errors.Add(err)
-	}
-
-	// we have error from any of the calls.
-	if errors.Length() > 0 {
-		ext.Error.Set(span, true)
-		http.Error(w, errors.Error(), http.StatusInternalServerError)
-		return
-	}
-	return
 }
 
-func doCall(ctx context.Context, httpClient *http.Client, method, url string, body io.Reader) (*http.Response, error) {
-	req, _ := makeRequest(ctx, method, url, body)
-	resp, _ := httpClient.Do(req)
-	defer func() {
-		if resp != nil {
-			resp.Body.Close()
-		}
-	}()
-	// Lets assume a http response that is not StatusOK results an error
-	if resp != nil {
-		err := isStatusNOK(resp.StatusCode)
-		return resp, err
+func operationA(ctx context.Context, param1 string) error {
+	var err error
+	log := logging.From(ctx)
+
+	transport := opentracing.NewTransportWithRoundTripper(opentracing.NewHandlerList(), http.DefaultTransport)
+	httpClient := &http.Client{Transport: transport}
+
+	// Each of the following client call will trigger the "remote" server to create a new span on their side. If remote server
+	// is not responding, no new span is created.
+	err = serviceBOperationB(ctx, httpClient, "value1")
+	if err != nil {
+		log.Error(err, "Error from operationB")
+		return err
 	}
 
-	return resp, nil
+	err = serviceCOperationC(ctx, httpClient, "value1")
+	if err != nil {
+		log.Error(err, "Error from operationC")
+		return err
+	}
+	return nil
+}
+
+func serviceBOperationB(ctx context.Context, httpClient *http.Client, param1 string) error {
+	hostPort := net.JoinHostPort("localhost", "9092")
+	urlPath := "/operationB?param1=" + param1
+	ctx = tracing.WithOperationID(ctx, "operationB")
+	_, err := doCall(ctx, httpClient, http.MethodGet, "operationB", hostPort, urlPath, nil)
+	return err
+}
+
+func serviceCOperationC(ctx context.Context, httpClient *http.Client, param1 string) error {
+	hostPort := net.JoinHostPort("localhost", "9093")
+	urlPath := "/operationC?param1=" + param1
+	ctx = tracing.WithOperationID(ctx, "operationC")
+	_, err := doCall(ctx, httpClient, http.MethodPost, "operationC", hostPort, urlPath, nil)
+	return err
+}
+
+func doCall(ctx context.Context, httpClient *http.Client, method, operation, hostPort, urlPath string, body io.Reader) (*http.Response, error) {
+	// TODO: this pattern of handling the span at the http I/O layer may not be viable since the
+	//     : decision to interpret a response code as an error requires application layer logic
+	span, ctx := opentracing.StartSpanFromContext(ctx, operation)
+	defer span.Finish()
+
+	url := "http://" + path.Join(hostPort, urlPath)
+	span.LogKV("event", "HTTP client call", "type", "external service", "url", url, "operation", operation)
+	req, _ := makeRequest(ctx, method, url, body)
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		opentracing.SetSpanError(span)
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	span.LogKV("event", "HTTP response", "statusCode", resp.StatusCode)
+
+	// Lets assume a http response that is <400 is success
+	if err = isStatusSuccess(resp); err != nil {
+		opentracing.SetSpanError(span)
+	}
+	return resp, err
 }
 
 func makeRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
-	req, err := ssctracing.NewRequest(ctx, method, url, body)
+	req, err := newRequest(ctx, method, url, body)
 	if method == http.MethodPost {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
@@ -138,9 +147,23 @@ func makeRequest(ctx context.Context, method, url string, body io.Reader) (*http
 	return req, err
 }
 
-func isStatusNOK(statusCode int) error {
-	if statusCode != http.StatusOK {
-		return fmt.Errorf(http.StatusText(statusCode))
+func isStatusSuccess(resp *http.Response) error {
+	statusCode := resp.StatusCode
+	if statusCode < 400 {
+		return nil
 	}
-	return nil
+
+	return fmt.Errorf(http.StatusText(statusCode))
+}
+
+// newRequest returns a new request from upstream ctx context.
+func newRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	// This propagate X-Request-ID to another microservice
+	req.Header.Add(tracing.XRequestID, "abcde")
+	req = opentracing.InjectHTTPRequestWithSpan(req.WithContext(ctx))
+	return req, err
 }

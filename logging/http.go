@@ -46,7 +46,8 @@ func (h *httpAccessHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"path", r.URL.Path,
 		"rawQuery", r.URL.RawQuery,
 		"referer", r.Referer(),
-		"realClientIP", xff.GetRemoteAddr(r))
+		"realClientIP", xff.GetRemoteAddr(r),
+		"userAgent", r.UserAgent())
 }
 
 type requestLoggerHandler struct {
