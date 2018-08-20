@@ -8,9 +8,9 @@ import (
 
 	"github.com/go-chi/chi"
 
-	"github.com/splunk/ssc-observation/logging"
-	"github.com/splunk/ssc-observation/metrics"
-	"github.com/splunk/ssc-observation/tracing"
+	"cd.splunkdev.com/libraries/go-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/metrics"
+	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
 // ExampleChiServiceRequestLogger is the same example as in main.go but
@@ -71,9 +71,8 @@ func serviceChiMain(hostPort string, wg *sync.WaitGroup) {
 	// Wrap operation1Handler with the request logging handler that will set up
 	// request context logging.
 
-	// You can use
-	// r.Use(logging.NewRequestLoggerHandlerAdaptor(logging.Global()))
-	// Or if you prefer to chain it yourself more explicitly
+	// Because logging.NewRequestLoggerHandler takes an extra argument
+	// you must wrap it like this
 	r.Use(func(next http.Handler) http.Handler {
 		return logging.NewRequestLoggerHandler(logging.Global(),
 			operation1HandlerFunc)
@@ -81,7 +80,6 @@ func serviceChiMain(hostPort string, wg *sync.WaitGroup) {
 	r.Use(logging.NewPanicHandler)
 	r.Use(metrics.NewPrometheusHandler)
 	r.Use(tracing.NewRequestContextHandler)
-	r.Use(logging.NewRequestLoggerHandlerAdaptor(log))
 	r.Use(logging.NewPanicRequestHandler)
 	r.Use(metrics.NewHTTPAccessHandler)
 	r.Use(logging.NewHTTPAccessHandler)

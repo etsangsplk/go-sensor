@@ -1,7 +1,7 @@
 package logging_test
 
 import (
-	"github.com/splunk/ssc-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/logging"
 )
 
 // This example demonstrates basic logging functions using the global logger.

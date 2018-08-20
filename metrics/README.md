@@ -336,14 +336,14 @@ go_memstats_gc_sys_bytes 708608
 # HTTP Middleware
 The metrics package provides middleware for serving up the Prometheus metrics endpoint and for observing standard http metrics.
 
-See the [ssc-observation README](https://github.com/splunk/ssc-observation) for details on how to configure the middleware pipeline.
+See the [ssc-observation README](https://cd.splunkdev.com/libraries/go-observation) for details on how to configure the middleware pipeline.
 
 You must use the following code to register the http metrics:
 
 ```go
 import (
       kvmetrics "github.com/splunk/kvstore-service/kvstore/metrics"
-      "github.com/splunk/ssc-observation/metrics"
+      "cd.splunkdev.com/libraries/go-observation/metrics"
 )
 
 func configureAPI(api *operations.KVStoreAPI) http.Handler {

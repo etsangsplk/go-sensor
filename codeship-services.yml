@@ -1,4 +1,0 @@
-sscobservation:
-  build:
-    image: splunk/ssc-observation
-    dockerfile: deploy/Dockerfile
