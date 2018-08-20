@@ -2,17 +2,6 @@
 
 
 [[projects]]
-  branch = "SSC-2176-Distributed-tracing-with-open-tracing-cleaned-up-version"
-  name = "cd.splunkdev.com/libraries/go-observation"
-  packages = [
-    "logging",
-    "metrics",
-    "opentracing",
-    "tracing"
-  ]
-  revision = "221485baa73ec4da389db4b5470206c0378155d8"
-
-[[projects]]
   branch = "master"
   name = "github.com/alecthomas/template"
   packages = [
@@ -32,18 +21,6 @@
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/cloudfoundry/multierror"
-  packages = ["."]
-  revision = "dafed03eebc65cdf3de2928e3f94793bc893ede0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/codahale/hdrhistogram"
-  packages = ["."]
-  revision = "3a0bb77429bd3a61596f5e8a3172445844342120"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -68,23 +45,6 @@
   packages = ["pbutil"]
   revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
   version = "v1.0.1"
-
-[[projects]]
-  name = "github.com/opentracing/opentracing-go"
-  packages = [
-    ".",
-    "ext",
-    "log",
-    "mocktracer"
-  ]
-  revision = "1949ddbfd147afd4d964a9f00b24eb291e0e7c38"
-  version = "v1.0.2"
-
-[[projects]]
-  name = "github.com/pkg/errors"
-  packages = ["."]
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -148,35 +108,6 @@
   version = "v1.2.1"
 
 [[projects]]
-  name = "github.com/uber/jaeger-client-go"
-  packages = [
-    ".",
-    "config",
-    "internal/baggage",
-    "internal/baggage/remote",
-    "internal/spanlog",
-    "internal/throttler",
-    "internal/throttler/remote",
-    "log",
-    "rpcmetrics",
-    "thrift",
-    "thrift-gen/agent",
-    "thrift-gen/baggage",
-    "thrift-gen/jaeger",
-    "thrift-gen/sampling",
-    "thrift-gen/zipkincore",
-    "utils"
-  ]
-  revision = "b043381d944715b469fd6b37addfd30145ca1758"
-  version = "v2.14.0"
-
-[[projects]]
-  name = "github.com/uber/jaeger-lib"
-  packages = ["metrics"]
-  revision = "ed3a127ec5fef7ae9ea95b01b542c47fbd999ce5"
-  version = "v1.5.0"
-
-[[projects]]
   name = "go.uber.org/atomic"
   packages = ["."]
   revision = "8474b86a5a6f79c443ce4b2992817ff32cf208b8"
@@ -209,12 +140,6 @@
 
 [[projects]]
   branch = "master"
-  name = "golang.org/x/net"
-  packages = ["context"]
-  revision = "f9ce57c11b242f0f1599cf25c89d8cb02c45295a"
-
-[[projects]]
-  branch = "master"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -242,6 +167,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "87000444e9bed97a2e569f6f38271b2dc07e2f4bc5cf4e0d53246655ddfb31b3"
+  inputs-digest = "5c8a3895d8f9ec979eda5d5d5cf2bb2f8683fd261f9866ae3fdb401c0b235c04"
   solver-name = "gps-cdcl"
   solver-version = 1
