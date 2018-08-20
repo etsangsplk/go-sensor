@@ -8,9 +8,9 @@ import (
 
 	"github.com/go-chi/chi"
 
-	"github.com/splunk/ssc-observation/logging"
-	"github.com/splunk/ssc-observation/metrics"
-	"github.com/splunk/ssc-observation/tracing"
+	"cd.splunkdev.com/libraries/go-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/metrics"
+	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
 // ExampleChiServiceRequestLogger is the same example as in main.go but
