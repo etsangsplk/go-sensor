@@ -7,8 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"github.com/splunk/ssc-observation/tracing"
+	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
 var (
