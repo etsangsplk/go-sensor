@@ -7,9 +7,9 @@ import (
 
 	"github.com/opentracing/opentracing-go/ext"
 
-	"github.com/splunk/ssc-observation/logging"
-	ssctracing "github.com/splunk/ssc-observation/opentracing"
-	"github.com/splunk/ssc-observation/tracing"
+	"cd.splunkdev.com/libraries/go-observation/logging"
+	ssctracing "cd.splunkdev.com/libraries/go-observation/opentracing"
+	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
 const serviceName = "fulfillment"

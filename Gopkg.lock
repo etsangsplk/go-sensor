@@ -2,6 +2,17 @@
 
 
 [[projects]]
+  branch = "SSC-2176-Distributed-tracing-with-open-tracing-cleaned-up-version"
+  name = "cd.splunkdev.com/libraries/go-observation"
+  packages = [
+    "logging",
+    "metrics",
+    "opentracing",
+    "tracing"
+  ]
+  revision = "221485baa73ec4da389db4b5470206c0378155d8"
+
+[[projects]]
   branch = "master"
   name = "github.com/alecthomas/template"
   packages = [
@@ -231,6 +242,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "049e9ea5d504176fcb8ddb910e7e27e2722f2a639aad741dbd44b3e2c30f550a"
+  inputs-digest = "20d1a15b2e7aa34888925382308a655d7ea244e7b03c83a7c0644c8d8af3b6c6"
   solver-name = "gps-cdcl"
   solver-version = 1

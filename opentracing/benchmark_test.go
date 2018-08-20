@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/splunk/ssc-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/logging"
 )
 
 // Provided solely as a relative value to compare against

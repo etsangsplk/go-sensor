@@ -10,7 +10,7 @@ import (
 	jaeger "github.com/uber/jaeger-client-go"
 	config "github.com/uber/jaeger-client-go/config"
 
-	"github.com/splunk/ssc-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/logging"
 )
 
 const (

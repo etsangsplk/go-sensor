@@ -10,11 +10,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	tag "github.com/opentracing/opentracing-go/ext"
 
-	// Because of referencing logging to get the requestID etc,
-	// to avoid (import cycle), I now put everything under opentracing folder
-	// instead if just tracing. Suggestion?
-	//"github.com/splunk/ssc-observation/logging"
-	"github.com/splunk/ssc-observation/tracing"
+	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
 func annotateOutboundRequest(req *http.Request) *http.Request {

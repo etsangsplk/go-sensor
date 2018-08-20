@@ -5,7 +5,7 @@ import (
 
 	jaegerLogger "github.com/uber/jaeger-client-go/log"
 
-	"github.com/splunk/ssc-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/logging"
 )
 
 var defaultLogger = jaegerLogger.NullLogger

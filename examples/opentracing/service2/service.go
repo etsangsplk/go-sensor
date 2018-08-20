@@ -11,10 +11,10 @@ import (
 
 	tag "github.com/opentracing/opentracing-go/ext"
 
-	"github.com/splunk/ssc-observation/logging"
-	"github.com/splunk/ssc-observation/tracing"
+	"cd.splunkdev.com/libraries/go-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/tracing"
 	// TODO we need a better name than opentracing --> confusing with the standard one.
-	ssctracing "github.com/splunk/ssc-observation/opentracing"
+	ssctracing "cd.splunkdev.com/libraries/go-observation/opentracing"
 )
 
 const serviceName = "customer-catalog"

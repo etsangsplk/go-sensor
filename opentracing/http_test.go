@@ -12,7 +12,7 @@ import (
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/splunk/ssc-observation/tracing"
+	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
 // Test that when we make an outbound http GET request within a span at client side

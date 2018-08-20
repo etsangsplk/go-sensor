@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	config "github.com/uber/jaeger-client-go/config"
 
-	"github.com/splunk/ssc-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/logging"
 )
 
 func StartLogCapturing() (chan string, *os.File) {
