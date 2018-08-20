@@ -14,7 +14,7 @@ import (
 	"github.com/splunk/ssc-observation/logging"
 	"github.com/splunk/ssc-observation/tracing"
 	// TODO we need a better name than opentracing --> confusing with the standard one.
-	ssctracing "github.com/splunk/ssc-observation/tracing/opentracing"
+	ssctracing "github.com/splunk/ssc-observation/opentracing"
 )
 
 const serviceName = "customer-catalog"

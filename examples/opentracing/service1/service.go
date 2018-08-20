@@ -12,8 +12,8 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 
 	"github.com/splunk/ssc-observation/logging"
+	ssctracing "github.com/splunk/ssc-observation/opentracing"
 	"github.com/splunk/ssc-observation/tracing"
-	ssctracing "github.com/splunk/ssc-observation/tracing/opentracing"
 )
 
 const serviceName = "api-gateway"
