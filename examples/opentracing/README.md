@@ -24,6 +24,8 @@ A span is tagged with notable events that happened in the span.
 
 ## Running
 
+Read Lightstep README (Reference below)
+
 ### LightStep credentials
 Please contact Kubernetes team.
 
@@ -100,6 +102,9 @@ Logs from Service 1, the service that you are hitting, should be something like 
 ```
 
 View trace at backend.
+
+Ligthstep README
+![alt text](../../opentracing/lightstep/README.md)
 
 Tracing Span
 ![alt text](./tracingui.png?raw=true)
