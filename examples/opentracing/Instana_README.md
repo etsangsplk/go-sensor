@@ -7,9 +7,9 @@ to view the traces.
 ## Example
 There are 3 Microservices involved: service1, service2 and service3. All services are on localhost and listen to 9091, 9092, and 9093 respectively.
 
-Service1: api-gateway service where all external http request will hit.
-Service2: customer-catalog service. It will query a fake database to fulfill its operation.
-Service3: fulfillment service. It is a fake order fulfillment service called by api-gateway after customer-catalog.
+service1: api-gateway service where all external http request will hit.
+service2: customer-catalog service. It will query a fake database to fulfill its operation.
+service3: fulfillment service. It is a fake order fulfillment service called by api-gateway after customer-catalog.
 
 The fake database will experience some arbitrary delay.
 Fulfillment service will result an internal server error.
@@ -24,44 +24,72 @@ A span is tagged with notable events that happened in the span.
 
 ## Running
 
-### LightStep credentials
+Please read Instana README (Reference section below)
+
+### Instana host
 Please contact Kubernetes team.
 
-You need to set the following environment variables for lightStep:
-```
-    // Collector
-    TRACER_URI_SCHEME               the url scheme of collector endpoint, default to nothing (via grpc)
-    TRACER_COLLECTOR_HOST_PORT       Collector host and port as string "host:port"
-    TRACER_COLLECTOR_SEND_PLAINTEXT  Whether to upload in encrypted mode, accept "true" or "false", default true
+# Environment Variables
 
-    // LightStep
-    LIGHTSTEP_ACCESSTOKEN            API Access Token
-
+Note if INSTANA_AGENT_HOST and INSTANA_AGENT_PORT are not set, it will use default INSTANA settings and send to their public
+endpoint. For default settings, you don't need to set an environmen variables.
 ```
-## LightStep satellite collector
-You can either setup your own LightStep Satellite collector so your instrumented application
+export INSTANA_AGENT_HOST=localhost
+export INSTANA_AGENT_PORT=42699
+```
+are the default values
+
+## Datastore
+Either have a local instance of postgres running or verify that you can connect to AWS aurora.
+
+## Instana Agent
+You can either setup your own Instana Agent so your instrumented application
 can forward the events to, or you need to talk to Kubernetes team for details.
 
-(https://docs.lightstep.com/docs/satellite-setup)
+(https://docs.instana.io/quick_start/agent_setup/other/)
+(https://docs.instana.io/quick_start/agent_configuration/)
 
 I use the following to spin one up locally (localhost) that use HTTP as transport, the collector is listening at localhost:8181, not using secure transport (using http).
 
-docker run -e COLLECTOR_API_KEY=<your satellite API key> -e COLLECTOR_POOL=splunk_poc_test_pool -e COLLECTOR_BABYSITTER_PORT=8000 -p 8000:8000 -e COLLECTOR_ADMIN_PLAIN_PORT=8080 -p 8080:8080 -e COLLECTOR_HTTP_PLAIN_PORT=8181 -p 8181:8181 -e COLLECTOR_PLAIN_PORT=8383 -p 8383:8383 lightstep/collector:latest
+```
+sudo docker run  --volume /var/run/docker.sock:/var/run/docker.sock   --volume /dev:/dev   --volume /sys:/sys   --volume /var/log:/var/log  --privileged  --pid=host   --ipc=host  --env="INSTANA_AGENT_KEY=ASK_YOUR_LEAD"  --env="INSTANA_AGENT_ENDPOINT=ASK_YOUR_LEAD"  --env="INSTANA_AGENT_ENDPOINT_PORT=ASK_YOUR_LEAD" -p 443:443  -p 42699:42699 instana/agent
+```
 
-Your application should have the following environment variables set:
-TRACER_URI_SCHEME = https (Not set default to GRPC)
-TRACER_COLLECTOR_HOST_PORT =  localhost:8181 (let's say you have a local satellite setup)
-LIGHTSTEP_ACCESSTOKEN = <your api access token>
-TRACER_COLLECTOR_SEND_PLAINTEXT (Not set which is default to true, sending event as plain text)
-
-### LightStep backend
+### Instana Agent
 
 Ask kubernetes team. They should have some account setup.
+
+### Run Microservices in Docker
+The 3 microservices can be run in docker containers via docker-compose. Install Docker and Docker Compose if you don't already have it: https://docs.docker.com/compose/install. You can check if it is already installed by running `docker-compose`.
+Running in Docker is required to connect to the instana agent.
+
+First build the docker image:
+```bash
+make opentracing-example-docker
+```
+
+Next, run the containers:
+```bash
+make opentracing-docker-run
+```
+
+Finally, in another terminal window make a request to service1:
+```
+curl --header "X-Request-ID:12345" 'http://localhost:9091/tenant1/operationA?param1=hi'
+```
+
+This should output "Internal Server Error". The error is expected since the example is demonstrating an operational failure.
+
+
+### Run Microservices On Localhost
+There should 3 Microservices running. You can run in 3 terminals.
+
+Note: when running locally edit the line in ./examples/opentracing/service1/service.go to set service2Host and service3Host to localhost.
 
 ### Run Microservices
 There should 3 Microservices running. You can run in 3 terminals.
 
-Make sure each of the service can be started properly.
+If you just want to test out the services, you can make sure each of the service can be started properly.
 
 ```bash
 go run ./examples/opentracing/service3/service.go
@@ -100,6 +128,9 @@ Logs from Service 1, the service that you are hitting, should be something like 
 ```
 
 View trace at backend.
+
+Instana README
+![alt text](../../opentracing/instana/README.md?raw=true)
 
 Tracing Span
 ![alt text](./tracingui.png?raw=true)

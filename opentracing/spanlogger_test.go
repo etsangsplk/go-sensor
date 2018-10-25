@@ -1,7 +1,6 @@
 package opentracing
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -9,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"cd.splunkdev.com/libraries/go-observation/logging"
-	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 )
 
 func TestSpanLoggerInfo(t *testing.T) {
@@ -38,7 +36,6 @@ func TestSpanLoggerInfo(t *testing.T) {
 
 	// Flush tracer before validation.
 	// If tracer is not a lightStep tracer, flush is noop.
-	lightstepx.Flush(context.Background())
 	spans := tracer.FinishedSpans()
 
 	StopLogCapturing(outC, w)
@@ -89,7 +86,6 @@ func TestSpanLoggerError(t *testing.T) {
 	span.Finish()
 	// Flush tracer before validation.
 	// If tracer is not a lightStep tracer, flush is noop.
-	lightstepx.Flush(context.Background())
 	spans := tracer.FinishedSpans()
 
 	StopLogCapturing(outC, w)

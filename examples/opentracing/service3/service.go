@@ -1,14 +1,18 @@
 package main
 
 import (
+    "errors"
 	"context"
 	"fmt"
 	"net/http"
 	"sync"
 
+	ot "github.com/opentracing/opentracing-go"
+
 	"cd.splunkdev.com/libraries/go-observation/examples/opentracing/handlers"
 	"cd.splunkdev.com/libraries/go-observation/logging"
 	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/instana"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
@@ -24,9 +28,19 @@ func main() {
 	logger := logging.New(serviceName)
 	logging.SetGlobalLogger(logger)
 
+	var tracer ot.Tracer
 	// Create, set tracer and bind tracer to service name
-	tracer := lightstepx.NewTracer(serviceName)
-	defer lightstepx.Close(context.Background())
+    if lightstepx.Enabled() && instana.Enabled() {
+        logger.Fatal(errors.New("cannot enable both Lighstep and Instana"), "use either Lightstep or Instana")
+    }
+	if lightstepx.Enabled() {
+		tracer = lightstepx.NewTracer(serviceName)
+		defer lightstepx.Close(context.Background())
+	}
+	if instana.Enabled() {
+		tracer = instana.NewTracer(serviceName)
+		defer instana.Close(context.Background())
+	}
 
 	opentracing.SetGlobalTracer(tracer)
 
@@ -45,12 +59,13 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	logger.Info(fmt.Sprintf("Starting service %s", serviceName))
 
 	// Configure Route http requests
-	http.Handle("/operationC", logging.NewRequestLoggerHandler(logging.Global(),
-		tracing.NewRequestContextHandler(
-			handlers.NewOperationHandler(
-				opentracing.NewHTTPOpenTracingHandler(
-					http.HandlerFunc(operationCHandler))))))
-	logger.Info("ready for handling requests")
+	http.Handle("/operationC",
+		logging.NewRequestLoggerHandler(logging.Global(),
+			tracing.NewRequestContextHandler(
+				handlers.NewOperationHandler(
+					opentracing.NewHTTPOpenTracingHandler(
+						http.HandlerFunc(operationCHandler))))))
+	logger.Info("Listening...", "port", hostPort)
 	err := http.ListenAndServe(hostPort, nil)
 	wg.Done()
 	if err != nil {
@@ -61,18 +76,17 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 func operationCHandler(w http.ResponseWriter, r *http.Request) {
 	// Get the request logger from ctx
 	ctx := r.Context()
-	logger := logging.From(ctx)
-	logger.Info("Executing operation", "operation", "C")
+	log := logging.From(ctx)
+	log.Info("Handling request", "operation", "operationC")
 
 	// The Http Handler should have created a new span and we just need to add to it.
 	// Add event to the current span
 	childSpan := opentracing.SpanFromContext(ctx)
-	spanLogger := opentracing.NewSpanLoggerWithSpan(logger, childSpan)
 	// This operation will error out and should show in reporter.
-	err := func() error { return fmt.Errorf("failed operationC") }()
+	err := fmt.Errorf("faileed serviceC.operationC")
 	if err != nil {
 		// Add event to span
-		spanLogger.Error(err, "server error", "type", "server")
+		childSpan.LogKV("message", "operationC error", "type", "server", "event", "error", "error", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

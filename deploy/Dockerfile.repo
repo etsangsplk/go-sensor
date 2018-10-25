@@ -1,0 +1,18 @@
+# Copyright 2017 Splunk
+
+# Image that contains the entire repo
+
+FROM golang:1.10-alpine
+LABEL maintainer="mt-46@splunk.com"
+
+# git is required by go get for mockgen
+# bash/curl is required by go_test.sh for codecov
+RUN apk add --update --no-cache make git bash curl
+
+# Set WORKDIR to project path in GOPATH
+WORKDIR /go/src/cd.splunkdev.com/libraries/go-observation
+
+# Copy repository
+COPY . /go/src/cd.splunkdev.com/libraries/go-observation
+
+ENV CGO_ENABLED 0

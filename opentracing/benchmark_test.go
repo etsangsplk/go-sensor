@@ -9,8 +9,10 @@ import (
 	"testing"
 
 	opentracing "github.com/opentracing/opentracing-go"
+	ot "github.com/opentracing/opentracing-go"
 
 	"cd.splunkdev.com/libraries/go-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/instana"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
@@ -28,8 +30,8 @@ func BenchmarkStringsRepeatBaseline(b *testing.B) {
 func BenchmarkShortMessage(b *testing.B) {
 	logger := logging.NewWithOutput("span with short message", ioutil.Discard)
 	logging.SetGlobalLogger(logger)
-	tracer := lightstepx.NewTracer("test new tracer")
-	defer lightstepx.Close(context.Background())
+	tracer := getTracer("test short message")
+	defer closeTracer(context.Background())
 	spanLogger := NewSpanLoggerWithSpan(logger, nil)
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -45,8 +47,10 @@ func BenchmarkShortMessage(b *testing.B) {
 func BenchmarkLongMessage(b *testing.B) {
 	logger := logging.NewWithOutput("span with long message", ioutil.Discard)
 	logging.SetGlobalLogger(logger)
-	tracer := lightstepx.NewTracer("test new tracer")
-	defer lightstepx.Close(context.Background())
+
+	tracer := getTracer("test long message")
+	defer closeTracer(context.Background())
+
 	spanLogger := NewSpanLoggerWithSpan(logger, nil)
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -62,8 +66,10 @@ func BenchmarkLongMessage(b *testing.B) {
 func BenchmarkShortErrorMessage(b *testing.B) {
 	logger := logging.NewWithOutput("span with short error message", ioutil.Discard)
 	logging.SetGlobalLogger(logger)
-	tracer := lightstepx.NewTracer("test new tracer")
-	defer lightstepx.Close(context.Background())
+
+	tracer := getTracer("test short error messsage")
+	defer closeTracer(context.Background())
+
 	spanLogger := NewSpanLoggerWithSpan(logger, nil)
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -79,8 +85,10 @@ func BenchmarkShortErrorMessage(b *testing.B) {
 func BenchmarkLongErrorMessage(b *testing.B) {
 	logger := logging.NewWithOutput("span with long error message", ioutil.Discard)
 	logging.SetGlobalLogger(logger)
-	tracer := lightstepx.NewTracer("test new tracer")
-	defer lightstepx.Close(context.Background())
+
+	tracer := getTracer("test long error messsage tracer")
+	defer closeTracer(context.Background())
+
 	spanLogger := NewSpanLoggerWithSpan(logger, nil)
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -96,8 +104,10 @@ func BenchmarkLongErrorMessage(b *testing.B) {
 func BenchmarkInjectHTTPRequestWithSpan(b *testing.B) {
 	logger := logging.NewWithOutput("inject http request with span", ioutil.Discard)
 	logging.SetGlobalLogger(logger)
-	tracer := lightstepx.NewTracer("test inject http request with span")
-	defer lightstepx.Close(context.Background())
+
+	tracer := getTracer("test inject http request with span")
+	defer closeTracer(context.Background())
+
 	b.ResetTimer()
 	b.ReportAllocs()
 
@@ -111,4 +121,27 @@ func BenchmarkInjectHTTPRequestWithSpan(b *testing.B) {
 		span.Finish()
 	}
 	return
+}
+
+func getTracer(serviceName string) ot.Tracer {
+	if lightstepx.Enabled() && instana.Enabled() {
+		logger := logging.Global()
+		logger.Fatal(errors.New("cannot enable both Lighstep and Instana"), "use either Lightstep or Instana")
+	}
+	if lightstepx.Enabled() {
+		return lightstepx.NewTracer(serviceName)
+	}
+	if instana.Enabled() {
+		return instana.NewTracer(serviceName)
+	}
+	return ot.GlobalTracer()
+}
+
+func closeTracer(ctx context.Context) {
+	if lightstepx.Enabled() {
+		lightstepx.Close(ctx)
+	}
+	if instana.Enabled() {
+		instana.Close(ctx)
+	}
 }
