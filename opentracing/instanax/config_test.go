@@ -1,4 +1,4 @@
-package instana
+package instanax
 
 import (
 	"os"
