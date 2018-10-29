@@ -19,6 +19,7 @@ import (
 	// TODO we need a better name than opentracing --> confusing with the standard one.
 	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/instanax"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/jaegerx"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 )
 
@@ -45,6 +46,11 @@ func main() {
 	if instanax.Enabled() {
 		tracer = instanax.NewTracer(serviceName)
 		defer instanax.Close(context.Background())
+	}
+	if jaegerx.Enabled() {
+		tracer, closer, err := jaegerx.NewTracer(serviceName)
+		logger.Fatal(err, "fail to initialize jaeger")
+		defer jaegerx.Close(closer, context.Background())
 	}
 
 	opentracing.SetGlobalTracer(tracer)

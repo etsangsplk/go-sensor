@@ -16,6 +16,7 @@ import (
 	"cd.splunkdev.com/libraries/go-observation/logging"
 	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/instanax"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/jaegerx"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
@@ -46,6 +47,7 @@ func main() {
 
 	var tracer ot.Tracer
 	// Create, set tracer and bind tracer to service name
+	// TODO change to switch statements
 	if lightstepx.Enabled() && instanax.Enabled() {
 		logger.Fatal(errors.New("cannot enable both Lighstep and Instana"), "use either Lightstep or Instana")
 	}
@@ -56,6 +58,11 @@ func main() {
 	if instanax.Enabled() {
 		tracer = instanax.NewTracer(serviceName)
 		defer instanax.Close(context.Background())
+	}
+	if jaegerx.Enabled() {
+		tracer, closer, err := jaegerx.NewTracer(serviceName)
+		logger.Fatal(err, "fail to initialize jaeger")
+		defer jaegerx.Close(closer, context.Background())
 	}
 
 	opentracing.SetGlobalTracer(tracer)
