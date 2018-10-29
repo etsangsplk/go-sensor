@@ -82,6 +82,14 @@
   version = "v3.3.2"
 
 [[projects]]
+  digest = "1:bbadccf3d3317ea03c0dac0b45b673b4b397c8f91a1d2eff550a3c51c4ad770e"
+  name = "github.com/gogo/protobuf"
+  packages = ["proto"]
+  pruneopts = "UT"
+  revision = "636bf0302bc95575d69441b25a2603156ffdddf1"
+  version = "v1.1.1"
+
+[[projects]]
   digest = "1:14834e04828af9e53954f1be45ea7f190c4c26d746009c2ab07c5828595539e9"
   name = "github.com/golang/protobuf"
   packages = [
@@ -95,6 +103,14 @@
   pruneopts = "UT"
   revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
   version = "v1.1.0"
+
+[[projects]]
+  digest = "1:bc3d9741c90d895f98be811d07b7baa177634c9a949ec54e4f4d26d03d78128e"
+  name = "github.com/instana/golang-sensor"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "493edb42228321483dd4d59ade71ca93fa89d66b"
+  version = "1.4.12"
 
 [[projects]]
   digest = "1:e22af8c7518e1eab6f2eab2b7d7558927f816262586cd6ed9f349c97a6c285c4"
@@ -120,12 +136,31 @@
   version = "v0.15.6"
 
 [[projects]]
+  branch = "master"
+  digest = "1:3e63783cca1101798e35684ef1013a792243b0cd75b5da6f57173a3c654b9e5b"
+  name = "github.com/looplab/fsm"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f980bdb68a8962823200eafe6c0aa99e917be0d7"
+
+[[projects]]
   digest = "1:ff5ebae34cfbf047d505ee150de27e60570e8c394b3b8fdbb720ff6ac71985fc"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
   pruneopts = "UT"
   revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
   version = "v1.0.1"
+
+[[projects]]
+  digest = "1:d07bd28263c09c5d7f6502e8ddac63e027eca0eafcd07632790d958b50360317"
+  name = "github.com/opentracing/basictracer-go"
+  packages = [
+    ".",
+    "wire",
+  ]
+  pruneopts = "UT"
+  revision = "1b32af207119a14b1b231d451df3ed04a72efebf"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:841fcba20c9b41a7519f3910b083d16be2c3479cc282859333fe07145c5b9a9a"
@@ -380,6 +415,7 @@
     "github.com/aws/aws-sdk-go/aws/request",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/go-chi/chi",
+    "github.com/instana/golang-sensor",
     "github.com/lightstep/lightstep-tracer-go",
     "github.com/lightstep/lightstep-tracer-go/collectorpb",
     "github.com/lightstep/lightstep-tracer-go/collectorpb/collectorpbfakes",

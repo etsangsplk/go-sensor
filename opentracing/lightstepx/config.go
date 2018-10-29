@@ -20,6 +20,9 @@ type EnvKey string
 
 // Environment variable keys
 const (
+	// Feature flag to enabled tracer
+	EnvEnabled EnvKey = "LIGHTSTEP_ENABLED"
+
 	// Collector
 	EnvURIScheme                      EnvKey = "TRACER_URI_SCHEME"
 	EnvCollectorEndpointHostPort      EnvKey = "TRACER_COLLECTOR_HOST_PORT"
@@ -129,11 +132,12 @@ func LoadConfig() error {
 	return nil
 }
 
-// Enabled returns true if any of the required LightStep environment variables
-// are set.
+// Enabled returns true if LIGHTSTEP_ENABLED is set true and
+// the required LightStep environment variable is set.
 func Enabled() bool {
+	enabled := getenvOptionalBool(EnvEnabled, false)
 	n := len(getenvOptionalString(EnvLightStepAccessToken, ""))
-	return n > 0
+	return enabled && (n > 0)
 }
 
 func getHostPort(key EnvKey) (string, int, error) {

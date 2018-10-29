@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"cd.splunkdev.com/libraries/go-observation/logging"
-	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
@@ -146,7 +145,6 @@ func TestHttpOpentracingHandler(t *testing.T) {
 
 	// Release/Flush resources
 	topSpan.Finish()
-	lightstepx.Flush(context.Background())
 
 	spans := tracer.FinishedSpans()
 	StopLogCapturing(outC, logWriter)

@@ -1,0 +1,26 @@
+version: '3'
+services:
+  service1:
+    ports:
+      - "9091:9091"
+    image: "splunk/go-observation-repo"
+    entrypoint:
+      - go
+      - run
+      - examples/opentracing/service1/service.go
+  service2:
+    ports:
+      - "9092:9092"
+    image: "splunk/go-observation-repo"
+    entrypoint:
+      - go
+      - run
+      - examples/opentracing/service2/service.go
+  service3:
+    ports:
+      - "9093:9093"
+    image: "splunk/go-observation-repo"
+    entrypoint:
+      - go
+      - run
+      - examples/opentracing/service3/service.go
