@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"cd.splunkdev.com/libraries/go-observation/logging"
-	"cd.splunkdev.com/libraries/go-observation/opentracing/instana"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/instanax"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 )
 
@@ -88,7 +88,7 @@ func TestInstanaChildSpanCreation(t *testing.T) {
 	outC, w := StartLogCapturing()
 	logger := logging.NewWithOutput(serviceName, w)
 	logging.SetGlobalLogger(logger)
-	if instana.Enabled() {
+	if instanax.Enabled() {
 		env := StashEnv()
 		defer PopEnv(env)
 		SetupTestEnvironmentVar()
@@ -165,13 +165,13 @@ func SetupTestEnvironmentVar() {
 }
 
 func MockInstanaTracer(serviceName string, recorder instanaSensor.SpanRecorder) opentracing.Tracer {
-	opts := &instana.Options{}
+	opts := &instanax.Options{}
 	agentHost, _ := os.LookupEnv(string(instana.EnvInstanaAgentHost))
 	agentPort, _ := os.LookupEnv(string(instana.EnvInstanaAgentPort))
 	port, _ := strconv.Atoi(agentPort)
 
-	instana.WithServiceName(serviceName)(opts)
-	instana.WithAgentEndpoint(agentHost, port)(opts)
+	instanax.WithServiceName(serviceName)(opts)
+	instanax.WithAgentEndpoint(agentHost, port)(opts)
 
 	return instanaSensor.NewTracerWithEverything(&opts.Opts, recorder)
 }
@@ -192,8 +192,8 @@ func flushTracer(ctx context.Context) {
 	if lightstepx.Enabled() {
 		lightstepx.Flush(ctx)
 	}
-	if instana.Enabled() {
-		instana.Flush(ctx)
+	if instanax.Enabled() {
+		instanax.Flush(ctx)
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 	ot "github.com/opentracing/opentracing-go"
 
 	"cd.splunkdev.com/libraries/go-observation/logging"
-	"cd.splunkdev.com/libraries/go-observation/opentracing/instana"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/instanax"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
@@ -131,8 +131,8 @@ func getTracer(serviceName string) ot.Tracer {
 	if lightstepx.Enabled() {
 		return lightstepx.NewTracer(serviceName)
 	}
-	if instana.Enabled() {
-		return instana.NewTracer(serviceName)
+	if instanax.Enabled() {
+		return instanax.NewTracer(serviceName)
 	}
 	return ot.GlobalTracer()
 }
@@ -141,7 +141,7 @@ func closeTracer(ctx context.Context) {
 	if lightstepx.Enabled() {
 		lightstepx.Close(ctx)
 	}
-	if instana.Enabled() {
-		instana.Close(ctx)
+	if instanax.Enabled() {
+		instanax.Close(ctx)
 	}
 }
