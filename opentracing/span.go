@@ -2,11 +2,20 @@ package opentracing
 
 import (
 	"context"
+	"os"
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 )
+
+var (
+	hostname string
+)
+
+func init() {
+	hostname, _ = os.Hostname()
+}
 
 // StartSpan uses Global tracer to create a new Span from operationName. options is for
 // convenience, for example, you can set tags when creating span.

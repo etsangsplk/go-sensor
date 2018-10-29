@@ -1,6 +1,7 @@
 package main
 
 import (
+    "errors"
 	"context"
 	"fmt"
 	"io"
@@ -9,14 +10,26 @@ import (
 	"path"
 	"sync"
 
+	ot "github.com/opentracing/opentracing-go"
+
 	"cd.splunkdev.com/libraries/go-observation/examples/opentracing/handlers"
 	"cd.splunkdev.com/libraries/go-observation/logging"
 	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/instana"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
 const serviceName = "example-api-gateway"
+
+var (
+	service2Host = "service2"
+	service3Host = "service3"
+
+	service1Port = "9091"
+	service2Port = "9092"
+	service3Port = "9093"
+)
 
 func main() {
 	// Routine initialization of logger and tracer
@@ -27,15 +40,29 @@ func main() {
 	logger := logging.New(serviceName)
 	logging.SetGlobalLogger(logger)
 
+	// To run outside of docker-compose uncomment these lines
+	// service2Host = "localhost"
+	// service3Host = "localhost"
+
+	var tracer ot.Tracer
 	// Create, set tracer and bind tracer to service name
-	tracer := lightstepx.NewTracer(serviceName)
-	defer lightstepx.Close(context.Background())
+    if lightstepx.Enabled() && instana.Enabled() {
+        logger.Fatal(errors.New("cannot enable both Lighstep and Instana"), "use either Lightstep or Instana")
+    }
+	if lightstepx.Enabled() {
+		tracer = lightstepx.NewTracer(serviceName)
+		defer lightstepx.Close(context.Background())
+	}
+	if instana.Enabled() {
+		tracer = instana.NewTracer(serviceName)
+		defer instana.Close(context.Background())
+	}
 
 	opentracing.SetGlobalTracer(tracer)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go Service(":9091", &wg)
+	go Service(":"+service1Port, &wg)
 	wg.Wait()
 }
 
@@ -45,13 +72,14 @@ func Service(hostPort string, wg *sync.WaitGroup) {
 	logger.Info(fmt.Sprintf("Starting service %s", serviceName))
 
 	// Configure Route http requests
-	http.Handle("/tenant1/operationA", logging.NewRequestLoggerHandler(logging.Global(),
-		tracing.NewRequestContextHandler(
-			handlers.NewOperationHandler(
-				opentracing.NewHTTPOpenTracingHandler(
-					http.HandlerFunc(operationAHandler))))))
+	http.Handle("/tenant1/operationA",
+		logging.NewRequestLoggerHandler(logging.Global(),
+			tracing.NewRequestContextHandler(
+				handlers.NewOperationHandler(
+					opentracing.NewHTTPOpenTracingHandler(
+						http.HandlerFunc(operationAHandler))))))
 
-	logger.Info("Listening...", "hostPort", hostPort)
+	logger.Info("Listening...", "port", hostPort)
 	err := http.ListenAndServe(hostPort, nil)
 	wg.Done()
 
@@ -82,13 +110,13 @@ func operationA(ctx context.Context, param1 string) error {
 
 	// Each of the following client call will trigger the "remote" server to create a new span on their side. If remote server
 	// is not responding, no new span is created.
-	err = serviceBOperationB(ctx, httpClient, "value1")
+	err = service2OperationB(ctx, httpClient, "value1")
 	if err != nil {
 		log.Error(err, "Error from operationB")
 		return err
 	}
 
-	err = serviceCOperationC(ctx, httpClient, "value1")
+	err = service3OperationC(ctx, httpClient, "value1")
 	if err != nil {
 		log.Error(err, "Error from operationC")
 		return err
@@ -96,16 +124,16 @@ func operationA(ctx context.Context, param1 string) error {
 	return nil
 }
 
-func serviceBOperationB(ctx context.Context, httpClient *http.Client, param1 string) error {
-	hostPort := net.JoinHostPort("localhost", "9092")
-	urlPath := "/operationB?param1=" + param1
+func service2OperationB(ctx context.Context, httpClient *http.Client, param1 string) error {
+	hostPort := net.JoinHostPort(service2Host, service2Port)
+	urlPath := "/tenant1/operationB?param1=" + param1
 	ctx = tracing.WithOperationID(ctx, "operationB")
 	_, err := doCall(ctx, httpClient, http.MethodGet, "operationB", hostPort, urlPath, nil)
 	return err
 }
 
-func serviceCOperationC(ctx context.Context, httpClient *http.Client, param1 string) error {
-	hostPort := net.JoinHostPort("localhost", "9093")
+func service3OperationC(ctx context.Context, httpClient *http.Client, param1 string) error {
+	hostPort := net.JoinHostPort(service3Host, service3Port)
 	urlPath := "/operationC?param1=" + param1
 	ctx = tracing.WithOperationID(ctx, "operationC")
 	_, err := doCall(ctx, httpClient, http.MethodPost, "operationC", hostPort, urlPath, nil)
