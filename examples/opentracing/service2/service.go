@@ -1,8 +1,8 @@
 package main
 
 import (
-    "errors"
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -18,7 +18,7 @@ import (
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 	// TODO we need a better name than opentracing --> confusing with the standard one.
 	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
-	"cd.splunkdev.com/libraries/go-observation/opentracing/instana"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/instanax"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 )
 
@@ -35,16 +35,16 @@ func main() {
 
 	var tracer ot.Tracer
 	// Create, set tracer and bind tracer to service name
-    if lightstepx.Enabled() && instana.Enabled() {
-        logger.Fatal(errors.New("cannot enable both Lighstep and Instana"), "use either Lightstep or Instana")
-    }
+	if lightstepx.Enabled() && instanax.Enabled() {
+		logger.Fatal(errors.New("cannot enable both Lighstep and Instana"), "use either Lightstep or Instana")
+	}
 	if lightstepx.Enabled() {
 		tracer = lightstepx.NewTracer(serviceName)
 		defer lightstepx.Close(context.Background())
 	}
-	if instana.Enabled() {
-		tracer = instana.NewTracer(serviceName)
-		defer instana.Close(context.Background())
+	if instanax.Enabled() {
+		tracer = instanax.NewTracer(serviceName)
+		defer instanax.Close(context.Background())
 	}
 
 	opentracing.SetGlobalTracer(tracer)

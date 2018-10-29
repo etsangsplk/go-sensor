@@ -1,4 +1,4 @@
-package instana
+package instanax
 
 import (
 	instana "github.com/instana/golang-sensor"
