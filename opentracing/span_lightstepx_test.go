@@ -146,7 +146,7 @@ func TestInstanaChildSpanCreation(t *testing.T) {
 
 func SetupTestEnvironmentVar() {
 	logger := logging.Global()
-	if lightstepx.Enabled() && instana.Enabled() {
+	if lightstepx.Enabled() && instanax.Enabled() {
 		logger.Fatal(errors.New("cannot enable both Lighstep and Instana"), "use either Lightstep or Instana")
 	}
 
@@ -157,17 +157,17 @@ func SetupTestEnvironmentVar() {
 		os.Setenv(string(lightstepx.EnvLightStepAPISendPlainText), "false")
 		os.Setenv(string(lightstepx.EnvLightStepAccessToken), "test")
 	}
-	if instana.Enabled() {
-		os.Setenv(string(instana.EnvInstanaAgentHost), "127.0.0.1:")
-		os.Setenv(string(instana.EnvInstanaAgentPort), "8080")
+	if instanax.Enabled() {
+		os.Setenv(string(instanax.EnvInstanaAgentHost), "127.0.0.1:")
+		os.Setenv(string(instanax.EnvInstanaAgentPort), "8080")
 	}
 	logger.Warn("neither Lighstep nor Instana is enabled")
 }
 
 func MockInstanaTracer(serviceName string, recorder instanaSensor.SpanRecorder) opentracing.Tracer {
 	opts := &instanax.Options{}
-	agentHost, _ := os.LookupEnv(string(instana.EnvInstanaAgentHost))
-	agentPort, _ := os.LookupEnv(string(instana.EnvInstanaAgentPort))
+	agentHost, _ := os.LookupEnv(string(instanax.EnvInstanaAgentHost))
+	agentPort, _ := os.LookupEnv(string(instanax.EnvInstanaAgentPort))
 	port, _ := strconv.Atoi(agentPort)
 
 	instanax.WithServiceName(serviceName)(opts)

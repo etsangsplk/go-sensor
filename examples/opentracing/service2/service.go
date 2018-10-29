@@ -35,14 +35,14 @@ func main() {
 
 	var tracer ot.Tracer
 	// Create, set tracer and bind tracer to service name
-	if lightstepx.Enabled() && instana.Enabled() {
+	if lightstepx.Enabled() && instanax.Enabled() {
 		logger.Fatal(errors.New("cannot enable both Lighstep and Instana"), "use either Lightstep or Instana")
 	}
 	if lightstepx.Enabled() {
 		tracer = lightstepx.NewTracer(serviceName)
 		defer lightstepx.Close(context.Background())
 	}
-	if instana.Enabled() {
+	if instanax.Enabled() {
 		tracer = instanax.NewTracer(serviceName)
 		defer instanax.Close(context.Background())
 	}

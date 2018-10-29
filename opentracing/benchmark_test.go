@@ -124,7 +124,7 @@ func BenchmarkInjectHTTPRequestWithSpan(b *testing.B) {
 }
 
 func getTracer(serviceName string) ot.Tracer {
-	if lightstepx.Enabled() && instana.Enabled() {
+	if lightstepx.Enabled() && instanax.Enabled() {
 		logger := logging.Global()
 		logger.Fatal(errors.New("cannot enable both Lighstep and Instana"), "use either Lightstep or Instana")
 	}
