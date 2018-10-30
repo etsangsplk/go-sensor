@@ -1,12 +1,9 @@
 package lightstepx
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
-	"strings"
 	"testing"
 
 	lightstep "github.com/lightstep/lightstep-tracer-go"
@@ -17,38 +14,8 @@ import (
 
 	"cd.splunkdev.com/libraries/go-observation/logging"
 	ot "cd.splunkdev.com/libraries/go-observation/opentracing"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/testutil"
 )
-
-func StartLogCapturing() (chan string, *os.File) {
-	r, w, _ := os.Pipe()
-	outC := make(chan string)
-
-	// copy the output in a separate goroutine so printing can't block indefinitely
-	go func() {
-		var buf bytes.Buffer
-		_, e := io.Copy(&buf, r)
-		if e != nil {
-			fmt.Printf("write stream panic: %v \n", e)
-			panic(e)
-		}
-		outC <- buf.String()
-	}()
-	return outC, w
-}
-
-func StopLogCapturing(outChannel chan string, writeStream *os.File) []string {
-	// back to normal state
-	if e := writeStream.Close(); e != nil {
-		fmt.Printf("closing write stream panic: %v \n", e)
-		panic(e)
-	}
-
-	logOutput := <-outChannel
-
-	// Verify call stack contains information we care about
-	s := strings.Split(logOutput, "\n")
-	return s
-}
 
 func SetupTestEnvironmentVar() {
 	os.Setenv(string(EnvCollectorEndpointHostPort), "localhost:32776")
@@ -71,17 +38,17 @@ func MockLightStepTracer(serviceName string, logger *logging.Logger) opentracing
 }
 
 func TestNewTracerWithTraceLogger(t *testing.T) {
-	env := StashEnv()
-	defer PopEnv(env)
+	env := testutil.StashEnv()
+	defer testutil.PopEnv(env)
 	SetupTestEnvironmentVar()
 	serviceName := "test new tracer"
 
-	outC, w := StartLogCapturing()
+	outC, w := testutil.StartLogCapturing()
 	logger := logging.NewWithOutput(serviceName, w)
 	logging.SetGlobalLogger(logger)
 
-	g := SaveGlobalTracer()
-	defer RestoreGlobalTracer(g)
+	g := testutil.GetGlobalTracer()
+	defer testutil.RestoreGlobalTracer(g)
 	tracer := MockLightStepTracer(serviceName, logger)
 	ot.SetGlobalTracer(tracer)
 
@@ -92,7 +59,7 @@ func TestNewTracerWithTraceLogger(t *testing.T) {
 	span.Finish()
 
 	Flush(context.Background()) // Flush the tracer before validation.
-	s := StopLogCapturing(outC, w)
+	s := testutil.StopLogCapturing(outC, w)
 
 	assert.NotNil(t, tracer)
 	// Check that some signs of reporter being initialized and that
@@ -135,14 +102,4 @@ func fakeConnection(fakeClient *cpbfakes.FakeCollectorServiceClient) lightstep.C
 	return func() (interface{}, lightstep.Connection, error) {
 		return fakeClient, new(dummyConnection), nil
 	}
-}
-
-// If you have no GlobalTracer, SpanFromContext will not work, internally it depends on global tracer.
-func SaveGlobalTracer() opentracing.Tracer {
-	return ot.Global()
-}
-
-// Restore the Global tracer or else other tests will be affected.
-func RestoreGlobalTracer(t opentracing.Tracer) {
-	ot.SetGlobalTracer(t)
 }

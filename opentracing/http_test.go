@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"cd.splunkdev.com/libraries/go-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/testutil"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
@@ -111,8 +112,8 @@ func TestNewRequestPOST(t *testing.T) {
 func TestHttpOpentracingHandler(t *testing.T) {
 	var e error
 	// Initiate a mock tracer and a top level span
-	g := SaveGlobalTracer()
-	defer RestoreGlobalTracer(g)
+	g := testutil.GetGlobalTracer()
+	defer testutil.RestoreGlobalTracer(g)
 
 	tracer := mocktracer.New()
 	topSpan := tracer.StartSpan("TestHttpOpentracing").(*mocktracer.MockSpan)
@@ -126,7 +127,7 @@ func TestHttpOpentracingHandler(t *testing.T) {
 		}
 	})
 
-	outC, logWriter := StartLogCapturing()
+	outC, logWriter := testutil.StartLogCapturing()
 	logger := logging.NewWithOutput("TestHttpOpentracing", logWriter)
 
 	h = tracing.NewRequestContextHandler(
@@ -147,7 +148,7 @@ func TestHttpOpentracingHandler(t *testing.T) {
 	topSpan.Finish()
 
 	spans := tracer.FinishedSpans()
-	StopLogCapturing(outC, logWriter)
+	testutil.StopLogCapturing(outC, logWriter)
 
 	assert.Equal(t, 2, len(spans), "should have 2 span records. TopSpan and a child span")
 	assert.Equal(t, spans[0].ParentID, spans[1].SpanContext.SpanID, "child span should have top span as parent id")

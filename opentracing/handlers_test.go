@@ -9,12 +9,14 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/stretchr/testify/assert"
+
+	"cd.splunkdev.com/libraries/go-observation/opentracing/testutil"
 )
 
 func TestNewTransportWithSpanTagHandlers(t *testing.T) {
 	// Initiate a mock tracer and a top level span
-	g := SaveGlobalTracer()
-	defer RestoreGlobalTracer(g)
+	g := testutil.GetGlobalTracer()
+	defer testutil.RestoreGlobalTracer(g)
 	tracer := mocktracer.New()
 	span := tracer.StartSpan("topspan").(*mocktracer.MockSpan)
 	topSpanContext := opentracing.ContextWithSpan(context.Background(), span)

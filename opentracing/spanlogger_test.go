@@ -8,20 +8,21 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"cd.splunkdev.com/libraries/go-observation/logging"
+	"cd.splunkdev.com/libraries/go-observation/opentracing/testutil"
 )
 
 func TestSpanLoggerInfo(t *testing.T) {
-	env := StashEnv()
-	defer PopEnv(env)
+	env := testutil.StashEnv()
+	defer testutil.PopEnv(env)
 	SetupTestEnvironmentVar()
 
 	serviceName := "test span logger at info level"
-	outC, w := StartLogCapturing()
+	outC, w := testutil.StartLogCapturing()
 	logger := logging.NewWithOutput(serviceName, w)
 	logging.SetGlobalLogger(logger)
 
-	g := SaveGlobalTracer()
-	defer RestoreGlobalTracer(g)
+	g := testutil.GetGlobalTracer()
+	defer testutil.RestoreGlobalTracer(g)
 	tracer := mocktracer.New()
 	SetGlobalTracer(tracer)
 
@@ -38,7 +39,7 @@ func TestSpanLoggerInfo(t *testing.T) {
 	// If tracer is not a lightStep tracer, flush is noop.
 	spans := tracer.FinishedSpans()
 
-	StopLogCapturing(outC, w)
+	testutil.StopLogCapturing(outC, w)
 
 	// We 1 span with 2 span logs. span log with dangling  key is rejected.
 	assert.Equal(t, 1, len(spans), "should have 1 span records")
@@ -60,18 +61,18 @@ func TestSpanLoggerInfo(t *testing.T) {
 }
 
 func TestSpanLoggerError(t *testing.T) {
-	env := StashEnv()
-	defer PopEnv(env)
+	env := testutil.StashEnv()
+	defer testutil.PopEnv(env)
 	SetupTestEnvironmentVar()
 
 	serviceName := "test span logger at error level"
-	outC, w := StartLogCapturing()
+	outC, w := testutil.StartLogCapturing()
 	logger := logging.NewWithOutput(serviceName, w)
 	logging.SetGlobalLogger(logger)
 	spanLogger := NewSpanLoggerWithSpan(logger, nil)
 
-	g := SaveGlobalTracer()
-	defer RestoreGlobalTracer(g)
+	g := testutil.GetGlobalTracer()
+	defer testutil.RestoreGlobalTracer(g)
 	tracer := mocktracer.New()
 
 	SetGlobalTracer(tracer)
@@ -88,7 +89,7 @@ func TestSpanLoggerError(t *testing.T) {
 	// If tracer is not a lightStep tracer, flush is noop.
 	spans := tracer.FinishedSpans()
 
-	StopLogCapturing(outC, w)
+	testutil.StopLogCapturing(outC, w)
 
 	assert.Equal(t, 1, len(spans), "should have 1 span records")
 	logRecords := spans[0].Logs()

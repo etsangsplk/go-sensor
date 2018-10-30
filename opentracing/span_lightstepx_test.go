@@ -17,25 +17,27 @@ import (
 	"cd.splunkdev.com/libraries/go-observation/logging"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/instanax"
 	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
+
+	"cd.splunkdev.com/libraries/go-observation/opentracing/testutil"
 )
 
 // Need to enable either Lighstep or Instana
 func TestChildSpanCreation(t *testing.T) {
 	if lightstepx.Enabled() {
-		env := StashEnv()
-		defer PopEnv(env)
+		env := testutil.StashEnv()
+		defer testutil.PopEnv(env)
 		SetupTestEnvironmentVar()
 
 		serviceName := "test multiple span creation"
-		outC, w := StartLogCapturing()
+		outC, w := testutil.StartLogCapturing()
 		logger := logging.NewWithOutput(serviceName, w)
 		logging.SetGlobalLogger(logger)
 
 		// Important, if you are using a MockTracer, childSpan will return as noopSpan
 		// internally the tracer looks for Global() tracer for creation after finding a parent
 		// exists from context. Make sure all mockTracer is not set as Global()
-		g := SaveGlobalTracer()
-		defer RestoreGlobalTracer(g)
+		g := testutil.GetGlobalTracer()
+		defer testutil.RestoreGlobalTracer(g)
 
 		recorder := instanaSensor.NewTestRecorder()
 		tracer := MockInstanaTracer(serviceName, recorder)
@@ -55,7 +57,7 @@ func TestChildSpanCreation(t *testing.T) {
 		childSpan.Finish()
 
 		spans := recorder.GetQueuedSpans()
-		StopLogCapturing(outC, w)
+		testutil.StopLogCapturing(outC, w)
 
 		assert.NotNil(t, tracer)
 
@@ -85,18 +87,18 @@ func TestChildSpanCreation(t *testing.T) {
 
 func TestInstanaChildSpanCreation(t *testing.T) {
 	serviceName := "test multiple span creation"
-	outC, w := StartLogCapturing()
+	outC, w := testutil.StartLogCapturing()
 	logger := logging.NewWithOutput(serviceName, w)
 	logging.SetGlobalLogger(logger)
 	if instanax.Enabled() {
-		env := StashEnv()
-		defer PopEnv(env)
+		env := testutil.StashEnv()
+		defer testutil.PopEnv(env)
 		SetupTestEnvironmentVar()
 		// Important, if you are using a MockTracer, childSpan will return as noopSpan
 		// internally the tracer looks for Global() tracer for creation after finding a parent
 		// exists from context. Make sure all mockTracer is not set as Global()
-		g := SaveGlobalTracer()
-		defer RestoreGlobalTracer(g)
+		g := testutil.GetGlobalTracer()
+		defer testutil.RestoreGlobalTracer(g)
 
 		recorder := instanaSensor.NewTestRecorder()
 		tracer := MockInstanaTracer(serviceName, recorder)
@@ -116,7 +118,7 @@ func TestInstanaChildSpanCreation(t *testing.T) {
 		childSpan.Finish()
 
 		spans := recorder.GetQueuedSpans()
-		StopLogCapturing(outC, w)
+		testutil.StopLogCapturing(outC, w)
 
 		assert.NotNil(t, tracer)
 

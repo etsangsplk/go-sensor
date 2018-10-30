@@ -19,6 +19,7 @@ type EnvKey string
 const (
 	EnvJaegerDisabled  EnvKey = "JAEGER_DISABLED"
 	EnvJaegerAgentHost EnvKey = "JAEGER_AGENT_HOST"
+	EnvJaegerAgentPort EnvKey = "JAEGER_AGENT_PORT"
 )
 
 // Enabled returns true if JAEGER_ENABLED is set true and

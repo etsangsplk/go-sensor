@@ -1,82 +1,56 @@
 package jaegerx
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"testing"
 
-	instana "github.com/instana/golang-sensor"
 	opentracing "github.com/opentracing/opentracing-go"
+	opentracingLog "github.com/opentracing/opentracing-go/log"
 	"github.com/stretchr/testify/assert"
+	jaeger "github.com/uber/jaeger-client-go"
+	"github.com/uber/jaeger-lib/metrics"
 
 	"cd.splunkdev.com/libraries/go-observation/logging"
 	ot "cd.splunkdev.com/libraries/go-observation/opentracing"
+
+	"cd.splunkdev.com/libraries/go-observation/opentracing/testutil"
 )
 
-func StartLogCapturing() (chan string, *os.File) {
-	r, w, _ := os.Pipe()
-	outC := make(chan string)
-
-	// copy the output in a separate goroutine so printing can't block indefinitely
-	go func() {
-		var buf bytes.Buffer
-		_, e := io.Copy(&buf, r)
-		if e != nil {
-			fmt.Printf("write stream panic: %v \n", e)
-			panic(e)
-		}
-		outC <- buf.String()
-	}()
-	return outC, w
-}
-
-func StopLogCapturing(outChannel chan string, writeStream *os.File) []string {
-	// back to normal state
-	if e := writeStream.Close(); e != nil {
-		fmt.Printf("closing write stream panic: %v \n", e)
-		panic(e)
-	}
-
-	logOutput := <-outChannel
-
-	// Verify call stack contains information we care about
-	s := strings.Split(logOutput, "\n")
-	return s
-}
-
 func SetupTestEnvironmentVar() {
-	os.Setenv(string(EnvInstanaAgentHost), "127.0.0.1")
-	os.Setenv(string(EnvInstanaAgentPort), "8080")
+	os.Setenv(string(EnvJaegerAgentHost), "127.0.0.1")
+	os.Setenv(string(EnvJaegerAgentPort), "8080")
 }
 
-func MockInstanaTracer(serviceName string, recorder instana.SpanRecorder) opentracing.Tracer {
-	opts := &Options{}
-	agentHost := getenvRequired(EnvInstanaAgentHost)
-	agentPort := int(getenvRequiredInt64(EnvInstanaAgentPort))
-	WithServiceName(serviceName)(opts)
-
-	WithAgentEndpoint(agentHost, agentPort)(opts)
-	return instana.NewTracerWithEverything(&opts.Opts, recorder)
+func MockJaegerTracer(serviceName string) (opentracing.Tracer, io.Closer) {
+	logger := logging.Global()
+	log := newLogger(logger)
+	metrics := jaeger.NewMetrics(metrics.NewLocalFactory(0), nil)
+	observer := testSpanobserver{logger: logger}
+	tracer, closer := jaeger.NewTracer(serviceName,
+		jaeger.NewConstSampler(true),
+		jaeger.NewLoggingReporter(log),
+		jaeger.TracerOptions.ContribObserver(observer),
+		jaeger.TracerOptions.Metrics(metrics),
+	)
+	return tracer, closer
 }
 
 func TestNewTracerWithTraceLogger(t *testing.T) {
-	env := StashEnv()
-	defer PopEnv(env)
+	env := testutil.StashEnv()
+	defer testutil.PopEnv(env)
 	SetupTestEnvironmentVar()
-	g := SaveGlobalTracer()
-	defer RestoreGlobalTracer(g)
+	g := testutil.GetGlobalTracer()
+	defer testutil.RestoreGlobalTracer(g)
 
 	serviceName := "test new tracer"
-	outC, w := StartLogCapturing()
+	outC, w := testutil.StartLogCapturing()
 	logger := logging.NewWithOutput(serviceName, w)
 	logging.SetGlobalLogger(logger)
 
-	recorder := instana.NewTestRecorder()
-
-	tracer := MockInstanaTracer(serviceName, recorder)
+	tracer, closer := MockJaegerTracer(serviceName)
 
 	ot.SetGlobalTracer(tracer)
 	hostname, _ := os.Hostname()
@@ -86,8 +60,8 @@ func TestNewTracerWithTraceLogger(t *testing.T) {
 	// Must finish span before validation.
 	span.Finish()
 
-	spans := recorder.GetQueuedSpans()
-	StopLogCapturing(outC, w)
+	closer.Close()
+	spans := testutil.StopLogCapturing(outC, w)
 
 	assert.NotNil(t, tracer)
 	// Check that some signs of reporter being initialized and that
@@ -104,12 +78,97 @@ func TestNewTracerWithTraceLogger(t *testing.T) {
 	assert.Contains(t, recordedSpan.Data.SDK.Custom.Tags[logging.HostnameKey], hostname, "Missing hostname")
 }
 
-// If you have no GlobalTracer, SpanFromContext will not work, internally it depends on global tracer.
-func SaveGlobalTracer() opentracing.Tracer {
-	return ot.Global()
+type testSpanobserver struct {
+	jaeger.ContribSpanObserver
+	logger *logging.Logger
 }
 
-// Restore the Global tracer or else other tests will be affected.
-func RestoreGlobalTracer(t opentracing.Tracer) {
-	ot.SetGlobalTracer(t)
+func (o *testSpanobserver) OnStartSpan(sp opentracing.Span, operationName string, options opentracing.StartSpanOptions) (jaeger.ContribSpanObserver, bool) {
+	o.logger.Info("span operation name", "operationname", operationName)
+	for _, v := range options.Tags {
+		t := fmt.Sprintf("#%v", v)
+		o.logger.Info("span operation tags", "tags", t)
+	}
+
+	return o, true
+}
+
+func (o *testSpanobserver) OnSetOperationName(operationName string) {
+	o.logger.Info("span operation name", "operationname", operationName)
+}
+
+func (o *testSpanobserver) OnSetTag(key string, value interface{}) {
+	v := fmt.Sprintf("#%v", value)
+	o.logger.Info("span tag", "tag", key, "value", v)
+}
+
+func (o *testSpanobserver) OnFinish(options opentracing.FinishOptions) {
+	logRecords := options.LogRecords
+	for _, v := range logRecords {
+		data, err := MaterializeWithJSON(v.Fields)
+		if err != nil {
+			o.logger.Info("span log", "log record", string(data))
+		} else {
+			o.logger.Error(err, "error reading span log record")
+		}
+	}
+}
+
+type fieldsAsMap map[string]string
+
+// MaterializeWithJSON converts log Fields into JSON string
+// TODO refactor into pluggable materializer
+func MaterializeWithJSON(logFields []opentracingLog.Field) ([]byte, error) {
+	fields := fieldsAsMap(make(map[string]string, len(logFields)))
+	for _, field := range logFields {
+		field.Marshal(fields)
+	}
+	if event, ok := fields["event"]; ok && len(fields) == 1 {
+		return []byte(event), nil
+	}
+	return json.Marshal(fields)
+}
+
+func (ml fieldsAsMap) EmitString(key, value string) {
+	ml[key] = value
+}
+
+func (ml fieldsAsMap) EmitBool(key string, value bool) {
+	ml[key] = fmt.Sprintf("%t", value)
+}
+
+func (ml fieldsAsMap) EmitInt(key string, value int) {
+	ml[key] = fmt.Sprintf("%d", value)
+}
+
+func (ml fieldsAsMap) EmitInt32(key string, value int32) {
+	ml[key] = fmt.Sprintf("%d", value)
+}
+
+func (ml fieldsAsMap) EmitInt64(key string, value int64) {
+	ml[key] = fmt.Sprintf("%d", value)
+}
+
+func (ml fieldsAsMap) EmitUint32(key string, value uint32) {
+	ml[key] = fmt.Sprintf("%d", value)
+}
+
+func (ml fieldsAsMap) EmitUint64(key string, value uint64) {
+	ml[key] = fmt.Sprintf("%d", value)
+}
+
+func (ml fieldsAsMap) EmitFloat32(key string, value float32) {
+	ml[key] = fmt.Sprintf("%f", value)
+}
+
+func (ml fieldsAsMap) EmitFloat64(key string, value float64) {
+	ml[key] = fmt.Sprintf("%f", value)
+}
+
+func (ml fieldsAsMap) EmitObject(key string, value interface{}) {
+	ml[key] = fmt.Sprintf("%+v", value)
+}
+
+func (ml fieldsAsMap) EmitLazyLogger(value opentracingLog.LazyLogger) {
+	value(ml)
 }

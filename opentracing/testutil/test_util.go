@@ -1,4 +1,4 @@
-package opentracing
+package testutil
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // PopEnv takes the list of the environment values and injects them into the
@@ -62,4 +64,14 @@ func StopLogCapturing(outChannel chan string, writeStream *os.File) []string {
 	// Verify call stack contains information we care about
 	s := strings.Split(logOutput, "\n")
 	return s
+}
+
+// If you have no GlobalTracer, SpanFromContext will not work, internally it depends on global tracer.
+func GetGlobalTracer() opentracing.Tracer {
+	return opentracing.GlobalTracer()
+}
+
+// Restore the Global tracer or else other tests will be affected.
+func RestoreGlobalTracer(t opentracing.Tracer) {
+	opentracing.SetGlobalTracer(t)
 }

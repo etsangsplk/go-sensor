@@ -9,12 +9,14 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/stretchr/testify/assert"
+
+	"cd.splunkdev.com/libraries/go-observation/opentracing/testutil"
 )
 
 func TestNewTransport(t *testing.T) {
 	// Initiate a mock tracer and a top level span
-	g := SaveGlobalTracer()
-	defer RestoreGlobalTracer(g)
+	g := testutil.GetGlobalTracer()
+	defer testutil.RestoreGlobalTracer(g)
 	tracer := mocktracer.New()
 	span := tracer.StartSpan("topspan").(*mocktracer.MockSpan)
 	topSpanContext := opentracing.ContextWithSpan(context.Background(), span)
@@ -44,8 +46,8 @@ func TestNewTransport(t *testing.T) {
 // reflected in the span at client side.
 func TestRoundtripper(t *testing.T) {
 	// Initiate a mock tracer and a top level span
-	g := SaveGlobalTracer()
-	defer RestoreGlobalTracer(g)
+	g := testutil.GetGlobalTracer()
+	defer testutil.RestoreGlobalTracer(g)
 	tracer := mocktracer.New()
 	SetGlobalTracer(tracer)
 	span := tracer.StartSpan("topspan").(*mocktracer.MockSpan)
@@ -88,14 +90,4 @@ func TestRoundtripper(t *testing.T) {
 	if len(spans) != 7 {
 		t.Fail()
 	}
-}
-
-// If you have no GlobalTracer, SpanFromContext will not work, internally it depends on global tracer.
-func SaveGlobalTracer() opentracing.Tracer {
-	return Global()
-}
-
-// Restore the Global tracer or else other tests will be affected.
-func RestoreGlobalTracer(t opentracing.Tracer) {
-	SetGlobalTracer(t)
 }

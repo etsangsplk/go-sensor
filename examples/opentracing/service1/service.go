@@ -60,7 +60,8 @@ func main() {
 		defer instanax.Close(context.Background())
 	}
 	if jaegerx.Enabled() {
-		tracer, closer, err := jaegerx.NewTracer(serviceName)
+		t, closer, err := jaegerx.NewTracer(serviceName)
+		tracer = t // silent tracer declared and not used.
 		logger.Fatal(err, "fail to initialize jaeger")
 		defer jaegerx.Close(closer, context.Background())
 	}
