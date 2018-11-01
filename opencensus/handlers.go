@@ -1,4 +1,4 @@
-package opentracing
+package opencensus
 
 import (
 	"net/http"

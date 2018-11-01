@@ -1,4 +1,4 @@
-package opentracing
+package opencensus
 
 // A TagsBuilder is a variable-sized array of interface{} with FlattenMapInterface, FlattenMapString,
 // AddTags and Tags methods. The zero value for TagsBuilder is an empty tags ready to use.

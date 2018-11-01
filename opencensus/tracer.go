@@ -1,4 +1,4 @@
-package opentracing
+package opencensus
 
 import (
 	opentracing "github.com/opentracing/opentracing-go"
