@@ -28,8 +28,9 @@ func InjectHTTPRequestWithSpan(req *http.Request) *http.Request {
 	if span == nil {
 		return req
 	}
-    trace.SpanKindClient:
-	tag.SpanKindRPCClient.Set(span)
+    
+    // TODO cannot set Span Kind after the fact
+	// tag.SpanKindRPCClient.Set(span)
 
 	tagHTTPClientRequest(span, req)
 	tagCurrentSpan(ctx, span)
@@ -73,12 +74,12 @@ func inboundHTTPRequest(ctx context.Context, operationName string, r *http.Reque
 
 	// Attach to parent span. In the case of an error it is ok if parentSpanContext is nil
 	// Create child span from incoming request
-    span := /
-
-    trace.StartSpan(ctx , operationName, o ...StartOption)
-	span := tracer.StartSpan(operationName, tag.RPCServerOption(parentSpanContext), opentracing.ChildOf(parentSpanContext))
-	tag.HTTPMethod.Set(span, r.Method)
-	tag.HTTPUrl.Set(span, r.URL.String())
+    soan := trace.StartSpan(ctx , operationName, trace.WithSpanKind(trace.SpanKindServer))
+	//span := tracer.StartSpan(operationName, tag.RPCServerOption(parentSpanContext), opentracing.ChildOf(parentSpanContext))
+	// tag.HTTPMethod.Set(span, r.Method)
+	// tag.HTTPUrl.Set(span, r.URL.String())
+    span.AddAttributes("http.method",req.Method)
+    span.AddAttributes("http.url",r.URL.String())
 	tagCurrentSpan(r.Context(), span)
 	return span
 }
@@ -87,22 +88,26 @@ func inboundHTTPRequest(ctx context.Context, operationName string, r *http.Reque
 // HTTP request span.
 func tagHTTPClientRequest(span opentracing.Span, req *http.Request) {
 	// Add some standard OpenTracing tags, useful in an HTTP request
-	tag.HTTPMethod.Set(span, req.Method)
-	tag.HTTPUrl.Set(
-		span,
-		fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.URL.Host, req.URL.Path),
-	)
-
+	//tag.HTTPMethod.Set(span, req.Method)
+    span.AddAttributes("http.method",req.Method)
+	//tag.HTTPUrl.Set(
+	//	span,
+	//	fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.URL.Host, req.URL.Path),
+	//)
+    span.AddAttributes("http.url",fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.URL.Host, req.URL.Path))
 	// Add information on the peer service we're about to contact.
 	host, portString, err := net.SplitHostPort(req.URL.Host)
 	if err == nil {
-		tag.PeerHostname.Set(span, host)
+        span.AddAttributes("peer.port",host)
+		//tag.PeerHostname.Set(span, host)
 		port, err := strconv.Atoi(portString)
 		if err != nil {
+            span.AddAttributes(,host)
 			tag.PeerPort.Set(span, uint16(port))
 		}
 	} else {
-		tag.PeerHostname.Set(span, req.URL.Host)
+        span.AddAttributes("peer.hostname",host)
+		//tag.PeerHostname.Set(span, req.URL.Host)
 	}
 }
 
@@ -110,7 +115,7 @@ func tagHTTPClientRequest(span opentracing.Span, req *http.Request) {
 func tagCurrentSpan(ctx context.Context, span opentracing.Span) {
 	reqID := tracing.RequestIDFrom(ctx)
 	tenantID := tracing.TenantIDFrom(ctx)
-    // exisiting key/value will be overwritten
+    // exisiting key/value will be overwritten.
 	span.AddAttributes(tracing.RequestIDKey, reqID)
 	span.AddAttributes(tracing.TenantKey, tenantID)
 }
@@ -135,7 +140,7 @@ func (h *httpOpenTracingHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 	// Extract parent span context and start new span
 	span := inboundHTTPRequest(ctx, operationName, r)
-	defer span.Finish()
+	defer span.End()
 
 	// Put new span into request context
 	r = r.WithContext(trace.NewContext(r.Context(), span))

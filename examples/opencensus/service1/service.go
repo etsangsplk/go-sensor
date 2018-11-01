@@ -166,7 +166,7 @@ func doCall(ctx context.Context, httpClient *http.Client, method, operation, hos
 	req, _ := makeRequest(ctx, method, url, body)
 	resp, err := httpClient.Do(req)
 	if err != nil {
-        span.SetStatus(trace.Status{trace.Code: trace.StatusCodeUnknown, trace.Message: err.Error()})
+		span.SetStatus(trace.Status{trace.Code: trace.StatusCodeUnknown, trace.Message: err.Error()})
 		return nil, err
 	}
 
