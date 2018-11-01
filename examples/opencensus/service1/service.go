@@ -67,7 +67,7 @@ func main() {
 
 	// Create, set tracer and bind tracer to service name
 
-	reporter, _:= initExporter(ctx, serviceName)
+	reporter, _ := initExporter(ctx, serviceName)
 	defer func() {
 		if reporter != nil {
 			reporter.Flush()
@@ -159,14 +159,14 @@ func doCall(ctx context.Context, httpClient *http.Client, method, operation, hos
 	// TODO: this pattern of handling the span at the http I/O layer may not be viable since the
 	//     : decision to interpret a response code as an error requires application layer logic
 	span, ctx := opentracing.StartSpanFromContext(ctx, operation)
-	defer span.Finish()
+	defer span.End()
 
 	url := "http://" + path.Join(hostPort, urlPath)
 	span.LogKV("event", "HTTP client call", "type", "external service", "url", url, "operation", operation)
 	req, _ := makeRequest(ctx, method, url, body)
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		opentracing.SetSpanError(span)
+        span.SetStatus(trace.Status{trace.Code: trace.StatusCodeUnknown, trace.Message: err.Error()})
 		return nil, err
 	}
 
@@ -175,7 +175,8 @@ func doCall(ctx context.Context, httpClient *http.Client, method, operation, hos
 
 	// Lets assume a http response that is <400 is success
 	if err = isStatusSuccess(resp); err != nil {
-		opentracing.SetSpanError(span)
+		span.SetStatus(trace.Status{trace.Code: trace.StatusCodeUnknown, trace.Message: err.Error()})
+		//opentracing.SetSpanError(span)
 	}
 	return resp, err
 }

@@ -22,6 +22,29 @@ opentracing also just touches http request. But the spec alo defines a set of st
 so far not seeing that from opencensus.
 Same goes with Database/Queueing...
 
+Since tag key is just string, we can import opentracing tag and use their exposed constants but why ...
+
+Issue2 SpanTag settings
+There are lack of convenience functions for Span Tag settings that help avoid mistakes
+
+``` 
+    opentracing
+    tag.HTTPMethod.Set(span, r.Method)
+    tag.HTTPUrl.Set(span, r.URL.String())
+```
+
+```
+    opencensus
+    tag.
+
+
+```
+
+Setting Span Status, is a bit harder, requires more understanding. 
+Check out their status code:
+https://github.com/census-instrumentation/opencensus-go/blob/264a2a48d94c062252389fffbc308ba555e35166/trace/status_codes.go
+https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto
+
 # Reference
 Opencensus concepts
 (https://opencensus.io/core-concepts)

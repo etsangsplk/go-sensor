@@ -58,18 +58,20 @@ func InjectHTTPRequestWithSpan(req *http.Request) *http.Request {
 // with Splunk search.
 func inboundHTTPRequest(ctx context.Context, operationName string, r *http.Request) opentracing.Span {
 	// Recreate parent spancontext for child span creation.
-	tracer := Global()
-	parentSpanContext, err := tracer.Extract(
-		opentracing.HTTPHeaders,
-		opentracing.HTTPHeadersCarrier(r.Header),
-	)
+	// tracer := Global()
+    //parentSpanContext := trace.FromContext(ctx)
+	//parentSpanContext, err := tracer.Extract(
+	//	opentracing.HTTPHeaders,
+	//	opentracing.HTTPHeadersCarrier(r.Header),
+	//)
 
-	if err != nil && err != opentracing.ErrSpanContextNotFound {
-		logging.From(ctx).Warn("Error extracing span from HTTP request", logging.ErrorKey, err)
-	}
+	//if err != nil && err != opentracing.ErrSpanContextNotFound {
+	//	logging.From(ctx).Warn("Error extracing span from HTTP request", logging.ErrorKey, err)
+	//}
 
 	// Attach to parent span. In the case of an error it is ok if parentSpanContext is nil
 	// Create child span from incoming request
+    span := trace.StartSpan(ctx , operationName, o ...StartOption)
 	span := tracer.StartSpan(operationName, tag.RPCServerOption(parentSpanContext), opentracing.ChildOf(parentSpanContext))
 	tag.HTTPMethod.Set(span, r.Method)
 	tag.HTTPUrl.Set(span, r.URL.String())
