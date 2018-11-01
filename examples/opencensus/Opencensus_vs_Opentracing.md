@@ -35,8 +35,7 @@ There are lack of convenience functions for Span Tag settings that help avoid mi
 
 ```
     opencensus
-    tag.
-
+    span.SetStatus(trace.Status{trace.Code: trace.StatusCodeUnknown, trace.Message: err.Error()})
 
 ```
 
