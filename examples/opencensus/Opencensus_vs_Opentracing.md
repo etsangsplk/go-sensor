@@ -54,6 +54,9 @@ https://github.com/census-instrumentation/opencensus-go/tree/aa2b39d1618ef56ba15
 Opencensus concepts
 (https://opencensus.io/core-concepts)
 
+Opencensus plugin (http and grpc for now)
+(https://github.com/census-instrumentation/opencensus-go/tree/master/plugin)
+
 NullExporter
 (examples/opencenus/exporter/nullexporter.go)
 
