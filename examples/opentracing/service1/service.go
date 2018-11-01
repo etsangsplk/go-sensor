@@ -45,7 +45,7 @@ func main() {
 	// service2Host = "localhost"
 	// service3Host = "localhost"
 
-	var tracer ot.Tracer
+	tracer ot.Tracer
 	// Create, set tracer and bind tracer to service name
 	// TODO change to switch statements
 	if lightstepx.Enabled() && instanax.Enabled() {
@@ -61,7 +61,7 @@ func main() {
 	}
 	if jaegerx.Enabled() {
 		t, closer, err := jaegerx.NewTracer(serviceName)
-		tracer = t // silent tracer declared and not used.
+		tracer = t // get around variable shadowing.
 		logger.Fatal(err, "fail to initialize jaeger")
 		defer jaegerx.Close(closer, context.Background())
 	}

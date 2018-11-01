@@ -44,7 +44,7 @@ func main() {
 	}
 	if jaegerx.Enabled() {
 		t, closer, err := jaegerx.NewTracer(serviceName)
-		tracer = t
+		tracer = t // get around variable shadowing.
 		logger.Fatal(err, "fail to initialize jaeger")
 		defer jaegerx.Close(closer, context.Background())
 	}
