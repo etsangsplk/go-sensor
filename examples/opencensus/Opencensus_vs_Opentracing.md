@@ -29,6 +29,8 @@ There are lack of convenience functions for Span Tag settings that help avoid mi
 Note that the following is jus for reference, http is actually taken care of by plugin:
 https://github.com/census-instrumentation/opencensus-go/tree/master/plugin/ochttp
 For example, no database nor pubsub.
+But note that we may not need to write out own(or just enhance) their roudntripper or inject meta data into http request.
+We still need to take care of injecting out own meta data like tenantID and requestID.
 
 ``` 
     opentracing
