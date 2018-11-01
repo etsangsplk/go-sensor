@@ -10,16 +10,35 @@ import (
 	"path"
 	"sync"
 
+	"go.opencensus.io/exporter/prometheus"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
+	"go.opencensus.io/trace"
+	"go.opencensus.io/zpages"
+	"go.opencensus.io/exporter/jaeger"
+    jaegerConfig "github.com/uber/jaeger-client-go/config"
+    
 	"cd.splunkdev.com/libraries/go-observation/examples/opentracing/handlers"
 	"cd.splunkdev.com/libraries/go-observation/logging"
-	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
-	"cd.splunkdev.com/libraries/go-observation/opentracing/instanax"
-	"cd.splunkdev.com/libraries/go-observation/opentracing/jaegerx"
-	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
+	//	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
+	//	"cd.splunkdev.com/libraries/go-observation/opentracing/instanax"
+	//	"cd.splunkdev.com/libraries/go-observation/opentracing/jaegerx"
+	//	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
 )
 
 const serviceName = "example-api-gateway"
+
+var (
+	projectID    = os.Getenv("GOOGLE_PROJECT_ID")
+	jaegerConfig = struct {
+		host string
+		port string
+	}{
+		host: os.Getenv("JAEGER_HOST"),
+		port: os.Getenv("JAEGER_PORT")}
+)
 
 var (
 	service2Host = "service2"
@@ -64,7 +83,13 @@ func main() {
 		defer jaegerx.Close(closer, context.Background())
 	}
 
-	opentracing.SetGlobalTracer(tracer)
+	exporter, err := initExporter(serviceName)
+	if err != nil {
+		logger.Fatal(errors.New("cannot initialize exporter"), "exporter_type", "jaeger")
+	}
+	defer exporter.Flush()
+
+	// opentracing.SetGlobalTracer(tracer)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -200,4 +225,14 @@ func newRequest(ctx context.Context, method string, url string, body io.Reader) 
 	req.Header.Add(tracing.XRequestID, "abcde")
 	req = opentracing.InjectHTTPRequestWithSpan(req.WithContext(ctx))
 	return req, err
+}
+
+func initExporter(ctx context.Context, serviceName string) (trace.Exporter, error) {
+	jaegerURL := fmt.Sprintf("http://%v:%v", jaegerConfig.host, jaegerConfig.port)
+
+	exporter, err := jaeger.NewExporter(jaeger.Options{
+		Endpoint:    jaegerURL,
+		ServiceName: serviceName,
+	})
+	return exporter, err
 }
