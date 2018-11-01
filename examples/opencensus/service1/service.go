@@ -7,22 +7,24 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path"
+	"strconv"
 	"sync"
 
-	"go.opencensus.io/exporter/prometheus"
-	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
-	"go.opencensus.io/trace"
-	"go.opencensus.io/zpages"
+	//jaegerConfig "github.com/uber/jaeger-client-go/config"
 	"go.opencensus.io/exporter/jaeger"
-    jaegerConfig "github.com/uber/jaeger-client-go/config"
+	//"go.opencensus.io/exporter/prometheus"
+	//"go.opencensus.io/stats"
+	//"go.opencensus.io/stats/view"
+	//"go.opencensus.io/tag"
+	//"go.opencensus.io/trace"
+	//"go.opencensus.io/zpages"
 
-    "cd.splunkdev.com/libraries/go-observation/examples/opencensus/exporter"
+	//"cd.splunkdev.com/libraries/go-observation/examples/opencensus/exporter"
 	"cd.splunkdev.com/libraries/go-observation/examples/opentracing/handlers"
 	"cd.splunkdev.com/libraries/go-observation/logging"
-	//	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
+	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
 	//	"cd.splunkdev.com/libraries/go-observation/opentracing/instanax"
 	//	"cd.splunkdev.com/libraries/go-observation/opentracing/jaegerx"
 	//	"cd.splunkdev.com/libraries/go-observation/opentracing/lightstepx"
@@ -31,14 +33,12 @@ import (
 
 const serviceName = "example-api-gateway"
 
-var (
-	projectID    = os.Getenv("GOOGLE_PROJECT_ID")
-	jaegerConfig = struct {
-		host string
-		port string
-	}{
-		host: os.Getenv("JAEGER_HOST"),
-		port: os.Getenv("JAEGER_PORT")}
+// Environment variable keys
+// Let jaeger config_env take care of all the configuration work.
+const (
+	EnvJaegerDisabled  = "JAEGER_DISABLED"
+	EnvJaegerAgentHost = "JAEGER_AGENT_HOST"
+	EnvJaegerAgentPort = "JAEGER_AGENT_PORT"
 )
 
 var (
@@ -51,6 +51,8 @@ var (
 )
 
 func main() {
+	var err error
+	ctx := context.Background()
 	// Routine initialization of logger and tracer
 	// We just need 1 tracer per service initialized with
 	// the service name. This is important because
@@ -58,38 +60,22 @@ func main() {
 	// service name for tracer initialization is what will be looked at.
 	logger := logging.New(serviceName)
 	logging.SetGlobalLogger(logger)
-
+	ctx = logging.NewContext(ctx, logger)
 	// To run outside of docker-compose uncomment these lines
 	// service2Host = "localhost"
 	// service3Host = "localhost"
 
-	tracer := opentracing.Global()
 	// Create, set tracer and bind tracer to service name
-	// TODO change to switch statements
-	if lightstepx.Enabled() && instanax.Enabled() {
-		logger.Fatal(errors.New("cannot enable both Lighstep and Instana"), "use either Lightstep or Instana")
-	}
-	if lightstepx.Enabled() {
-		tracer = lightstepx.NewTracer(serviceName)
-		defer lightstepx.Close(context.Background())
-	}
-	if instanax.Enabled() {
-		tracer = instanax.NewTracer(serviceName)
-		defer instanax.Close(context.Background())
-	}
-	if jaegerx.Enabled() {
-		t, closer, err := jaegerx.NewTracer(serviceName)
-		tracer = t // get around variable shadowing.
-		logger.Fatal(err, "fail to initialize jaeger")
-		defer jaegerx.Close(closer, context.Background())
-	}
 
-	exporter, err := initExporter(serviceName)
+	reporter, err := initExporter(ctx, serviceName)
+	defer func() {
+		if reporter != nil {
+			reporter.Flush()
+		}
+	}()
 	if err != nil {
 		logger.Fatal(errors.New("cannot initialize exporter"), "exporter_type", "jaeger")
 	}
-	defer exporter.Flush()
-
 	// opentracing.SetGlobalTracer(tracer)
 
 	var wg sync.WaitGroup
@@ -228,15 +214,34 @@ func newRequest(ctx context.Context, method string, url string, body io.Reader) 
 	return req, err
 }
 
-func initExporter(ctx context.Context, serviceName string) (trace.Exporter, error) {
-    reporter := &exporter.NullExporter{}
+func initExporter(ctx context.Context, serviceName string) (*jaeger.Exporter, error) {
+	logger := logging.From(ctx)
 
-	jaegerURL := fmt.Sprintf("http://%v:%v", jaegerConfig.host, jaegerConfig.port)
-
+	host := os.Getenv(EnvJaegerAgentHost)
+	port := os.Getenv(EnvJaegerAgentPort)
+	jaegerURL := fmt.Sprintf("http://%v:%v", host, port)
 	reporter, err := jaeger.NewExporter(jaeger.Options{
-		Endpoint:    jaegerURL,
-		ServiceName: serviceName,
+		CollectorEndpoint: jaegerURL,
+		ServiceName:       serviceName,
 	})
-
+	if err != nil {
+		logger.Fatal(err, "jager exporter failed")
+	}
+	logger.Info("jager exporter initialized")
 	return reporter, err
+}
+
+// Enabled returns true if JAEGER_ENABLED is set true and
+// JAEGER_AGENT_HOST is set.
+func Enabled() bool {
+	var disabled bool
+	var err error
+	v, ok := os.LookupEnv(EnvJaegerDisabled)
+	if ok {
+		disabled, err = strconv.ParseBool(v)
+		if err != nil {
+			disabled = true
+		}
+	}
+	return !disabled
 }

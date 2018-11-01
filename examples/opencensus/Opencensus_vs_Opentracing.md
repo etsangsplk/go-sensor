@@ -7,27 +7,10 @@ Neither Lightstep nor Instana supports Opencensus natively, we need to write a E
 **  Span Baggage (not seeing this in opencensus)
 **  Span Log 
 
-Example NullExporter:
-```
-import (
-    "go.opencensus.io/stats/view"
-    "go.opencensus.io/trace"
-)
 
-// NullExporter is a stats and trace exporter that does nothing
-type NullExporter struct{}
-
-// stats.view.Exporter interface
-func (e *NullExporter) ExportView(d *view.Data) {
-    // noop
-}
-
-// trace.Exporter interface
-func (e *NullExporter) ExportSpan(d *trace.SpanData) {
-    // noop
-}
-```
 # Reference
+NullExporter
+(examples/opencenus/exporter/nullexporter.go)
 
 Opencensus Repo
 (https://github.com/census-instrumentation/opencensus-go)
