@@ -26,6 +26,9 @@ Since tag key is just string, we can import opentracing tag and use their expose
 
 Issue2 SpanTag settings
 There are lack of convenience functions for Span Tag settings that help avoid mistakes
+Note that the following is jus for reference, http is actually taken care of by plugin:
+https://github.com/census-instrumentation/opencensus-go/tree/master/plugin/ochttp
+For example, no database nor pubsub.
 
 ``` 
     opentracing
@@ -43,6 +46,9 @@ Setting Span Status, is a bit harder, requires more understanding.
 Check out their status code:
 https://github.com/census-instrumentation/opencensus-go/blob/264a2a48d94c062252389fffbc308ba555e35166/trace/status_codes.go
 https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto
+
+But luckily
+https://github.com/census-instrumentation/opencensus-go/tree/aa2b39d1618ef56ba156f27cfcdae9042f68f0bc/plugin
 
 # Reference
 Opencensus concepts
