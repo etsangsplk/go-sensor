@@ -158,7 +158,7 @@ func service3OperationC(ctx context.Context, httpClient *http.Client, param1 str
 func doCall(ctx context.Context, httpClient *http.Client, method, operation, hostPort, urlPath string, body io.Reader) (*http.Response, error) {
 	// TODO: this pattern of handling the span at the http I/O layer may not be viable since the
 	//     : decision to interpret a response code as an error requires application layer logic
-	span, ctx := opentracing.StartSpanFromContext(ctx, operation)
+	span, ctx := trace.StartSpanFromContext(ctx, operation)
 	defer span.End()
 
 	url := "http://" + path.Join(hostPort, urlPath)

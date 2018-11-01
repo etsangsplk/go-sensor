@@ -30,22 +30,24 @@ func InjectHTTPRequestWithSpan(req *http.Request) *http.Request {
 	}
     trace.SpanKindClient:
 	tag.SpanKindRPCClient.Set(span)
+
 	tagHTTPClientRequest(span, req)
 	tagCurrentSpan(ctx, span)
 
 	// Inject the Span context into the outgoing HTTP Request.
 	// Sicne we are sending an HTTP request, will use the HTTP headers as carrier.
-	tracer := Global()
-	err := tracer.Inject(
-		span.Context(),
-		opentracing.HTTPHeaders,
-		opentracing.HTTPHeadersCarrier(req.Header),
-	)
-	if err != nil {
+	//tracer := Global()
+
+	//err := tracer.Inject(
+	//	span.Context(),
+	//	opentracing.HTTPHeaders,
+	//	opentracing.HTTPHeadersCarrier(req.Header),
+	//)
+	//if err != nil {
 		// Indicate span resulted in failed operation.
 		// We are just marking the Span as failed. The real request will still continue.
-		tag.Error.Set(span, true)
-	}
+	//	tag.Error.Set(span, true)
+	//}
 	spanCtx := trace.NewContext(ctx, span)
 	return req.WithContext(spanCtx)
 }
@@ -71,7 +73,9 @@ func inboundHTTPRequest(ctx context.Context, operationName string, r *http.Reque
 
 	// Attach to parent span. In the case of an error it is ok if parentSpanContext is nil
 	// Create child span from incoming request
-    span := trace.StartSpan(ctx , operationName, o ...StartOption)
+    span := /
+
+    trace.StartSpan(ctx , operationName, o ...StartOption)
 	span := tracer.StartSpan(operationName, tag.RPCServerOption(parentSpanContext), opentracing.ChildOf(parentSpanContext))
 	tag.HTTPMethod.Set(span, r.Method)
 	tag.HTTPUrl.Set(span, r.URL.String())
@@ -106,8 +110,9 @@ func tagHTTPClientRequest(span opentracing.Span, req *http.Request) {
 func tagCurrentSpan(ctx context.Context, span opentracing.Span) {
 	reqID := tracing.RequestIDFrom(ctx)
 	tenantID := tracing.TenantIDFrom(ctx)
-	span.SetTag(tracing.RequestIDKey, reqID)
-	span.SetTag(tracing.TenantKey, tenantID)
+    // exisiting key/value will be overwritten
+	span.AddAttributes(tracing.RequestIDKey, reqID)
+	span.AddAttributes(tracing.TenantKey, tenantID)
 }
 
 // httpOpenTracingHandler provides http middleware to construct
