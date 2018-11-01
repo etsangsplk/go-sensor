@@ -67,15 +67,12 @@ func main() {
 
 	// Create, set tracer and bind tracer to service name
 
-	reporter, err := initExporter(ctx, serviceName)
+	reporter, _:= initExporter(ctx, serviceName)
 	defer func() {
 		if reporter != nil {
 			reporter.Flush()
 		}
 	}()
-	if err != nil {
-		logger.Fatal(errors.New("cannot initialize exporter"), "exporter_type", "jaeger")
-	}
 	// opentracing.SetGlobalTracer(tracer)
 
 	var wg sync.WaitGroup
@@ -216,7 +213,6 @@ func newRequest(ctx context.Context, method string, url string, body io.Reader) 
 
 func initExporter(ctx context.Context, serviceName string) (*jaeger.Exporter, error) {
 	logger := logging.From(ctx)
-
 	host := os.Getenv(EnvJaegerAgentHost)
 	port := os.Getenv(EnvJaegerAgentPort)
 	jaegerURL := fmt.Sprintf("http://%v:%v", host, port)

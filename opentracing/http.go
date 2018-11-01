@@ -7,20 +7,28 @@ import (
 	"net/http"
 	"strconv"
 
+    //opentracing "github.com/opentracing/opentracing-go"
+    //tag "github.com/opentracing/opentracing-go/ext"
+
+    //"go.opencensus.io/stats"
+    //"go.opencensus.io/stats/view"
+    "go.opencensus.io/tag"
+    "go.opencensus.io/trace"
+    //"go.opencensus.io/zpages"
+
 	"cd.splunkdev.com/libraries/go-observation/logging"
 	"cd.splunkdev.com/libraries/go-observation/tracing"
-	opentracing "github.com/opentracing/opentracing-go"
-	tag "github.com/opentracing/opentracing-go/ext"
 )
 
 // InjectHTTPRequest injects the span from the HTTP request context into the HTTP request headers.
 // If there is no span in the req.Context() then no span injection is done.
 func InjectHTTPRequestWithSpan(req *http.Request) *http.Request {
 	ctx := req.Context()
-	span := opentracing.SpanFromContext(ctx)
+	span := trace.FromContext(ctx)
 	if span == nil {
 		return req
 	}
+    trace.SpanKindClient:
 	tag.SpanKindRPCClient.Set(span)
 	tagHTTPClientRequest(span, req)
 	tagCurrentSpan(ctx, span)
@@ -38,7 +46,7 @@ func InjectHTTPRequestWithSpan(req *http.Request) *http.Request {
 		// We are just marking the Span as failed. The real request will still continue.
 		tag.Error.Set(span, true)
 	}
-	spanCtx := opentracing.ContextWithSpan(ctx, span)
+	spanCtx := trace.NewContext(ctx, span)
 	return req.WithContext(spanCtx)
 }
 
@@ -123,7 +131,7 @@ func (h *httpOpenTracingHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	defer span.Finish()
 
 	// Put new span into request context
-	r = r.WithContext(opentracing.ContextWithSpan(r.Context(), span))
+	r = r.WithContext(trace.NewContext(r.Context(), span))
 
 	h.next.ServeHTTP(rw, r)
 	tag.HTTPStatusCode.Set(span, uint16(rw.StatusCode()))
