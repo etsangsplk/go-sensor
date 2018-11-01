@@ -18,7 +18,8 @@ import (
 	"go.opencensus.io/zpages"
 	"go.opencensus.io/exporter/jaeger"
     jaegerConfig "github.com/uber/jaeger-client-go/config"
-    
+
+    "cd.splunkdev.com/libraries/go-observation/examples/opencensus/exporter"
 	"cd.splunkdev.com/libraries/go-observation/examples/opentracing/handlers"
 	"cd.splunkdev.com/libraries/go-observation/logging"
 	//	opentracing "cd.splunkdev.com/libraries/go-observation/opentracing"
@@ -228,11 +229,14 @@ func newRequest(ctx context.Context, method string, url string, body io.Reader) 
 }
 
 func initExporter(ctx context.Context, serviceName string) (trace.Exporter, error) {
+    reporter := &exporter.NullExporter{}
+
 	jaegerURL := fmt.Sprintf("http://%v:%v", jaegerConfig.host, jaegerConfig.port)
 
-	exporter, err := jaeger.NewExporter(jaeger.Options{
+	reporter, err := jaeger.NewExporter(jaeger.Options{
 		Endpoint:    jaegerURL,
 		ServiceName: serviceName,
 	})
-	return exporter, err
+
+	return reporter, err
 }
